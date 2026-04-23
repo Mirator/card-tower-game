@@ -1,0 +1,32 @@
+:root {
+  --bg-a: #172338;
+  --bg-b: #27405b;
+  --panel: #f3f0e8;
+  --ink: #182128;
+  --accent: #d86f3d;
+  --muted: #8f9ba9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top right, #3b5f82 0%, var(--bg-a) 55%, #101829 100%);
+  color: var(--panel);
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  margin: 0 auto;
+}
