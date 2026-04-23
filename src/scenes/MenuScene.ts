@@ -38,6 +38,10 @@ export class MenuScene extends Phaser.Scene {
     super('MenuScene');
   }
 
+  private handleResize(): void {
+    this.scene.restart();
+  }
+
   create(): void {
     const { width, height } = this.scale;
 
@@ -130,14 +134,17 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.add
-      .text(width / 2, height - 70, 'Tap cards to play. Toggle Discard mode to cycle your hand.', {
+      .text(width / 2, height - 70, 'Desktop: left click play, right click discard. Mobile: swipe up/down on card.', {
         fontFamily: 'Georgia',
         fontSize: '18px',
         color: '#cbd1da',
       })
       .setOrigin(0.5);
 
+    this.scale.on('resize', this.handleResize, this);
+
     this.events.once('shutdown', () => {
+      this.scale.off('resize', this.handleResize, this);
       animationLabel.destroy();
     });
   }

@@ -16,19 +16,21 @@ async function bootstrap(): Promise<void> {
     import('./scenes/MenuScene'),
     import('./scenes/GameScene'),
   ]);
+  const viewportWidth = Math.max(320, document.documentElement.clientWidth || window.innerWidth);
+  const viewportHeight = Math.max(320, document.documentElement.clientHeight || window.innerHeight);
 
   game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: 'app',
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: viewportWidth,
+    height: viewportHeight,
     backgroundColor: '#111b2c',
     scene: [BootScene, MenuScene, GameScene],
     scale: {
       mode: Phaser.Scale.RESIZE,
-      autoCenter: Phaser.Scale.NO_CENTER,
-      width: window.innerWidth,
-      height: window.innerHeight,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: viewportWidth,
+      height: viewportHeight,
     },
     render: {
       antialias: true,

@@ -10,4 +10,4 @@ This folder contains the split specification files derived from `card_tower_game
 - `06-weapon-cards.md`
 - `07-crystal-cards.md`
 - `08-balance-ai-milestones.md`
-- `09-existing-ui-spec.md`
+- `09-ui.md`
