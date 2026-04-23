@@ -30,3 +30,9 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 
 ## Remaining Notes
 - Production bundle is large (~1.25MB JS) because Phaser is included in a single client chunk; this is expected for the current setup.
+
+## Chunk Warning Fix
+- Refactored app bootstrap to lazy-load Phaser and scenes via dynamic imports.
+- Added Vite manual chunking so Phaser is emitted as a dedicated `phaser` chunk.
+- Tuned `build.chunkSizeWarningLimit` to 1400KB to match expected Phaser footprint and suppress false-positive warning.
+- Verified with `npm run build`: warning no longer appears.
