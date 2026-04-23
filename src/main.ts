@@ -1,5 +1,4 @@
 import './style.css';
-import { GAME_HEIGHT, GAME_WIDTH } from './game/constants';
 import type { GameScene } from './scenes/GameScene';
 
 type TestingWindow = Window & {
@@ -21,15 +20,15 @@ async function bootstrap(): Promise<void> {
   game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: 'app',
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
+    width: window.innerWidth,
+    height: window.innerHeight,
     backgroundColor: '#111b2c',
     scene: [BootScene, MenuScene, GameScene],
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: GAME_WIDTH,
-      height: GAME_HEIGHT,
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.NO_CENTER,
+      width: window.innerWidth,
+      height: window.innerHeight,
     },
     render: {
       antialias: true,
