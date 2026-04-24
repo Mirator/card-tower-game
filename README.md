@@ -7,8 +7,9 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 - Deterministic reducer-based turn engine
 - AI opponent with lethal/prevent-lethal/heuristic priorities
 - Boot/Menu/Game scene flow with rematch loop
+- Selected-card command panel with explicit Play and Discard actions
 - Local persistence for stats/settings (`localStorage`)
-- Automation hooks for scripted validation
+- Dev-gated automation hooks for scripted validation
 
 ## Run
 ```bash
@@ -27,13 +28,21 @@ npm run build
 
 ## Controls
 - `Enter` or `Space` on menu: start match
-- Click a card: play card (if affordable)
-- Toggle `Discard` and click a card: discard/cycle
+- Left click a card: play it if affordable
+- Right click a card: discard/cycle it
+- Hover or tap a card: select and preview it
+- `Enter` during a match: play selected card
+- `Backspace` or `Delete`: discard selected card
+- Mobile swipe up on a card: play it
+- Mobile swipe down on a card: discard it
+- Play/Discard buttons: act on the selected card
 - `F`: fullscreen toggle
 - `Esc`: exit fullscreen
 
 ## Testing Hooks
-Exposed on `window` for automation:
+Automation hooks are exposed only in development mode or when `VITE_EXPOSE_TEST_HOOKS=true`.
+
+When exposed on `window`:
 - `render_game_to_text(): string`
 - `advanceTime(ms: number): void`
 - `__game.interact(): void` (automation helper: plays first affordable player card)
