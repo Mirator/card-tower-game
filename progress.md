@@ -72,3 +72,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added default card selection, richer effect impact previews, and keyboard actions: Enter plays the selected card, Backspace/Delete discards it.
 - Updated `render_game_to_text` UI payload with selected card name, playability, and impact preview so automation/state inspection matches the visible command surface.
 - Verified the Play button path in-browser: selected playable card resolves, turn advances, and enemy reveal appears without console errors.
+
+## 30-Card Basic Deck Pass
+- Reworked the active deck model from the full 60-card library to a 30-card physical starter deck with duplicate basic cards.
+- Added duplicate-safe player hand targeting via optional `handIndex` on play/discard actions and slot-based UI selection.
+- Updated specs, root GDD, and README to document the 30-card deck, discard reshuffle loop, and simpler active card list.
+- Added tests for deck composition, discard reshuffle, and duplicate hand-slot targeting.
+- Verified with `npm run lint`, `npm test`, `npm run build`, a starter-deck doc consistency script, and Playwright smoke artifacts in `output/basic-deck-smoke/`.

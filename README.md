@@ -3,7 +3,8 @@
 A Phaser + TypeScript implementation of the browser tower-card duel from `card_tower_game.md`.
 
 ## Features
-- Full 60-card v1 set (20 brick, 20 weapon, 20 crystal)
+- 30-card basic v1 deck with duplicate physical copies
+- Discard pile reshuffles into the draw pile when the deck runs out
 - Deterministic reducer-based turn engine
 - AI opponent with lethal/prevent-lethal/heuristic priorities
 - Boot/Menu/Game scene flow with rematch loop

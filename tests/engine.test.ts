@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_BY_ID } from '../src/game/cards';
+import { CARD_BY_ID, STARTER_DECK_CARD_IDS } from '../src/game/cards';
 import { cloneGameState, createInitialGameState, reduceGameState } from '../src/game/engine';
 import { SeededRng } from '../src/game/rng';
 import type { GameState } from '../src/game/types';
@@ -157,5 +157,82 @@ describe('game engine', () => {
   it('contains all 60 cards and known ids', () => {
     expect(Object.keys(CARD_BY_ID).length).toBe(60);
     expect(CARD_BY_ID.cataclysm.cost).toBe(15);
+  });
+
+  it('uses a 30-card physical starter deck with duplicate staples', () => {
+    const counts = STARTER_DECK_CARD_IDS.reduce<Record<string, number>>((acc, cardId) => {
+      acc[cardId] = (acc[cardId] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    expect(STARTER_DECK_CARD_IDS.length).toBe(30);
+    expect(STARTER_DECK_CARD_IDS.every((cardId) => Boolean(CARD_BY_ID[cardId]))).toBe(true);
+    expect(counts).toMatchObject({
+      brick_patch: 2,
+      repair: 2,
+      strike: 2,
+      slash: 2,
+      spark: 2,
+      zap: 2,
+      crystal_boost: 2,
+    });
+
+    const domainCounts = STARTER_DECK_CARD_IDS.reduce<Record<string, number>>((acc, cardId) => {
+      const domain = CARD_BY_ID[cardId].domain;
+      acc[domain] = (acc[domain] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect(domainCounts).toEqual({ bricks: 10, weapons: 10, crystals: 10 });
+
+    const state = createInitialGameState(6060);
+    expect(state.players.player.hand.length + state.players.player.deck.length).toBe(30);
+    expect(state.players.ai.hand.length + state.players.ai.deck.length).toBe(30);
+  });
+
+  it('reshuffles discard into the deck when the draw pile is empty', () => {
+    const rng = new SeededRng(8181);
+    let state = withPlayerTurn(createInitialGameState(8181));
+
+    state.players.player.hand = ['strike', 'slash', 'raid', 'smash', 'spark'];
+    state.players.player.deck = [];
+    state.players.player.discard = ['zap'];
+    state.players.player.weapons = 20;
+
+    const play = reduceGameState(state, { type: 'play_card', playerId: 'player', cardId: 'strike', handIndex: 0 }, rng);
+    expect(play.errors).toEqual([]);
+
+    const end = reduceGameState(play.state, { type: 'end_turn' }, rng);
+    expect(end.errors).toEqual([]);
+    expect(end.state.players.player.hand.length).toBe(6);
+    expect(end.state.players.player.deck.length).toBe(0);
+    expect(end.state.players.player.discard.length).toBe(0);
+    expect(end.state.players.player.hand).toEqual(expect.arrayContaining(['strike', 'zap']));
+  });
+
+  it('targets duplicate hand slots by index for play and discard', () => {
+    const rng = new SeededRng(9292);
+    let playState = withPlayerTurn(createInitialGameState(9292));
+    playState.players.player.hand = ['strike', 'slash', 'strike'];
+    playState.players.player.deck = [];
+    playState.players.player.discard = [];
+    playState.players.player.weapons = 20;
+
+    const played = reduceGameState(playState, { type: 'play_card', playerId: 'player', cardId: 'strike', handIndex: 2 }, rng);
+    expect(played.errors).toEqual([]);
+    expect(played.state.players.player.hand).toEqual(['strike', 'slash']);
+    expect(played.state.players.player.discard).toEqual(['strike']);
+
+    let discardState = withPlayerTurn(createInitialGameState(9393));
+    discardState.players.player.hand = ['strike', 'slash', 'strike'];
+    discardState.players.player.deck = ['zap'];
+    discardState.players.player.discard = [];
+
+    const discarded = reduceGameState(discardState, { type: 'discard_card', playerId: 'player', cardId: 'strike', handIndex: 2 }, rng);
+    expect(discarded.errors).toEqual([]);
+    expect(discarded.state.players.player.hand).toEqual(['strike', 'slash', 'zap']);
+    expect(discarded.state.players.player.discard).toEqual(['strike']);
+
+    const invalid = reduceGameState(discardState, { type: 'discard_card', playerId: 'player', cardId: 'strike', handIndex: 1 }, rng);
+    expect(invalid.errors).toEqual(['Card is not in hand.']);
   });
 });

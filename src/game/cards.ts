@@ -589,3 +589,48 @@ export const CARD_BY_ID: Record<string, CardDefinition> = Object.fromEntries(
 );
 
 export const ALL_CARD_IDS: string[] = ALL_CARDS.map((card) => card.id);
+
+export const STARTER_DECK_CARD_IDS: string[] = [
+  'brick_patch',
+  'brick_patch',
+  'repair',
+  'repair',
+  'reinforce',
+  'brick_flow',
+  'construction',
+  'stone_wall',
+  'quarry_team',
+  'tower_boost',
+
+  'strike',
+  'strike',
+  'slash',
+  'slash',
+  'smash',
+  'raid',
+  'breach',
+  'pressure',
+  'siege_crew',
+  'overrun',
+
+  'spark',
+  'spark',
+  'zap',
+  'zap',
+  'crystal_boost',
+  'crystal_boost',
+  'shield',
+  'arcane_study',
+  'mana_surge',
+  'arcane_blast',
+];
+
+if (STARTER_DECK_CARD_IDS.length !== 30) {
+  throw new Error(`Expected 30 starter deck cards, got ${STARTER_DECK_CARD_IDS.length}`);
+}
+
+for (const cardId of STARTER_DECK_CARD_IDS) {
+  if (!CARD_BY_ID[cardId]) {
+    throw new Error(`Starter deck references unknown card id: ${cardId}`);
+  }
+}

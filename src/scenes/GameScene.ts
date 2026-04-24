@@ -42,6 +42,7 @@ interface TowerVisualRefs {
 
 interface CardVisual {
   cardId: string;
+  handIndex: number;
   container: Phaser.GameObjects.Container;
   body: Phaser.GameObjects.Rectangle;
   baseY: number;
@@ -55,6 +56,7 @@ interface ActionButtonRefs {
 
 interface GestureState {
   cardId: string;
+  handIndex: number;
   x: number;
   y: number;
   isTouch: boolean;
@@ -230,6 +232,7 @@ export class GameScene extends Phaser.Scene {
   private gestureState = new Map<number, GestureState>();
 
   private selectedCardId: string | null = null;
+  private selectedHandIndex: number | null = null;
   private aiCountdownMs: number | null = null;
   private aiRevealCountdownMs: number | null = null;
   private aiPendingAction: Action | null = null;
@@ -326,14 +329,16 @@ export class GameScene extends Phaser.Scene {
         }
 
         const hand = this.state.players.player.hand;
-        const target = hand.find((cardId) => canAffordCard(this.state, 'player', cardId)) ?? hand[0];
+        const targetIndex = hand.findIndex((cardId) => canAffordCard(this.state, 'player', cardId));
+        const handIndex = targetIndex === -1 ? 0 : targetIndex;
+        const target = hand[handIndex];
         if (!target) {
           return;
         }
-        this.tryPlayCard(target);
+        this.tryPlayCard(target, handIndex);
       },
       clearInput: () => {
-        this.selectedCardId = null;
+        this.clearSelectedCard();
         this.updateCardPreview();
         this.refreshCardSelection();
       },
@@ -993,7 +998,7 @@ export class GameScene extends Phaser.Scene {
     this.state = createInitialGameState(matchSeed);
     this.resultPersisted = false;
 
-    this.selectedCardId = null;
+    this.clearSelectedCard();
     this.aiCountdownMs = null;
     this.aiRevealCountdownMs = null;
     this.aiPendingAction = null;
@@ -1006,7 +1011,7 @@ export class GameScene extends Phaser.Scene {
 
   private dispatch(action: Action): boolean {
     const previous = cloneGameState(this.state);
-    const playedCardOrigin = action.type === 'play_card' ? this.getCardWorldPosition(action.cardId) : null;
+    const playedCardOrigin = action.type === 'play_card' ? this.getCardWorldPosition(action.cardId, action.handIndex) : null;
 
     const result = reduceGameState(this.state, action, this.rng);
     this.state = result.state;
@@ -1539,17 +1544,18 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private onCardPointerDown(cardId: string, pointer: Phaser.Input.Pointer): void {
+  private onCardPointerDown(cardId: string, handIndex: number, pointer: Phaser.Input.Pointer): void {
     const event = pointer.event as MouseEvent | PointerEvent | undefined;
     const isRightClick = pointer.button === 2 || pointer.rightButtonDown() || event?.button === 2;
 
     if (isRightClick) {
-      this.tryDiscardCard(cardId);
+      this.tryDiscardCard(cardId, handIndex);
       return;
     }
 
     this.gestureState.set(pointer.id, {
       cardId,
+      handIndex,
       x: pointer.x,
       y: pointer.y,
       isTouch: this.isTouchPointer(pointer),
@@ -1568,21 +1574,19 @@ export class GameScene extends Phaser.Scene {
 
     if (Math.abs(dy) > SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
       if (dy < 0) {
-        this.tryPlayCard(gesture.cardId);
+        this.tryPlayCard(gesture.cardId, gesture.handIndex);
       } else {
-        this.tryDiscardCard(gesture.cardId);
+        this.tryDiscardCard(gesture.cardId, gesture.handIndex);
       }
       return;
     }
 
     if (gesture.isTouch) {
-      this.selectedCardId = gesture.cardId;
-      this.updateCardPreview(gesture.cardId);
-      this.refreshCardSelection();
+      this.selectCardAt(gesture.handIndex);
       return;
     }
 
-    this.tryPlayCard(gesture.cardId);
+    this.tryPlayCard(gesture.cardId, gesture.handIndex);
   }
 
   private isTouchPointer(pointer: Phaser.Input.Pointer): boolean {
@@ -1593,10 +1597,12 @@ export class GameScene extends Phaser.Scene {
     return pointer.wasTouch;
   }
 
-  private tryPlayCard(cardId: string): void {
-    this.selectedCardId = cardId;
-    this.updateCardPreview(cardId);
-    this.refreshCardSelection();
+  private tryPlayCard(cardId: string, handIndex?: number): void {
+    const selectedIndex = this.resolveHandIndex(cardId, handIndex);
+    if (selectedIndex === null) {
+      return;
+    }
+    this.selectCardAt(selectedIndex);
 
     if (this.state.phase !== 'playing') {
       return;
@@ -1614,7 +1620,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const played = this.dispatch({ type: 'play_card', playerId: 'player', cardId });
+    const played = this.dispatch({ type: 'play_card', playerId: 'player', cardId, handIndex: selectedIndex });
     if (!played) {
       return;
     }
@@ -1625,20 +1631,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tryPlaySelectedCard(): void {
-    if (!this.selectedCardId) {
+    if (this.selectedHandIndex === null) {
       this.selectDefaultCard();
     }
-    if (!this.selectedCardId) {
+    const selected = this.getSelectedHandEntry();
+    if (!selected) {
       return;
     }
 
-    this.tryPlayCard(this.selectedCardId);
+    this.tryPlayCard(selected.cardId, selected.handIndex);
   }
 
-  private tryDiscardCard(cardId: string): void {
-    this.selectedCardId = cardId;
-    this.updateCardPreview(cardId);
-    this.refreshCardSelection();
+  private tryDiscardCard(cardId: string, handIndex?: number): void {
+    const selectedIndex = this.resolveHandIndex(cardId, handIndex);
+    if (selectedIndex === null) {
+      return;
+    }
+    this.selectCardAt(selectedIndex);
 
     if (this.state.phase !== 'playing') {
       return;
@@ -1647,7 +1656,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const discarded = this.dispatch({ type: 'discard_card', playerId: 'player', cardId });
+    const discarded = this.dispatch({ type: 'discard_card', playerId: 'player', cardId, handIndex: selectedIndex });
     if (!discarded) {
       return;
     }
@@ -1658,23 +1667,74 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tryDiscardSelectedCard(): void {
-    if (!this.selectedCardId) {
+    if (this.selectedHandIndex === null) {
       this.selectDefaultCard();
     }
-    if (!this.selectedCardId) {
+    const selected = this.getSelectedHandEntry();
+    if (!selected) {
       return;
     }
 
-    this.tryDiscardCard(this.selectedCardId);
+    this.tryDiscardCard(selected.cardId, selected.handIndex);
+  }
+
+  private clearSelectedCard(): void {
+    this.selectedCardId = null;
+    this.selectedHandIndex = null;
+  }
+
+  private getSelectedHandEntry(): { cardId: string; handIndex: number } | null {
+    if (this.selectedHandIndex === null) {
+      return null;
+    }
+    const cardId = this.state.players.player.hand[this.selectedHandIndex];
+    if (!cardId) {
+      return null;
+    }
+    return { cardId, handIndex: this.selectedHandIndex };
+  }
+
+  private resolveHandIndex(cardId: string, handIndex?: number): number | null {
+    const hand = this.state.players.player.hand;
+    if (handIndex !== undefined && hand[handIndex] === cardId) {
+      return handIndex;
+    }
+    const fallbackIndex = hand.indexOf(cardId);
+    return fallbackIndex === -1 ? null : fallbackIndex;
+  }
+
+  private selectCardAt(handIndex: number | null): void {
+    if (handIndex === null) {
+      this.clearSelectedCard();
+      this.updateCardPreview();
+      this.refreshCardSelection();
+      return;
+    }
+
+    const cardId = this.state.players.player.hand[handIndex];
+    if (!cardId) {
+      this.clearSelectedCard();
+      this.updateCardPreview();
+      this.refreshCardSelection();
+      return;
+    }
+
+    this.selectedHandIndex = handIndex;
+    this.selectedCardId = cardId;
+    this.updateCardPreview(cardId);
+    this.refreshCardSelection();
   }
 
   private selectDefaultCard(): void {
     const hand = this.state.players.player.hand;
-    if (this.selectedCardId && hand.includes(this.selectedCardId)) {
+    const selected = this.getSelectedHandEntry();
+    if (selected && selected.cardId === this.selectedCardId) {
       return;
     }
 
-    this.selectedCardId = hand.find((cardId) => canAffordCard(this.state, 'player', cardId)) ?? hand[0] ?? null;
+    const playableIndex = hand.findIndex((cardId) => canAffordCard(this.state, 'player', cardId));
+    const handIndex = playableIndex === -1 ? (hand.length > 0 ? 0 : null) : playableIndex;
+    this.selectCardAt(handIndex);
   }
 
   private updateHud(): void {
@@ -1826,7 +1886,7 @@ export class GameScene extends Phaser.Scene {
       const affordable = canAffordCard(this.state, 'player', cardId);
       const cardPadding = ultraCompact ? 4 : 10;
       const titleWrapWidth = ultraCompact ? cardWidth - cardPadding * 2 : Math.max(42, cardWidth - 58);
-      const isSelected = this.selectedCardId === cardId;
+      const isSelected = this.selectedHandIndex === index;
 
       const container = this.add.container(x, y);
       container.setY(isSelected ? -16 : 0);
@@ -1885,9 +1945,7 @@ export class GameScene extends Phaser.Scene {
 
       const hit = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x000000, 0).setInteractive({ useHandCursor: true });
       hit.on('pointerover', () => {
-        this.selectedCardId = cardId;
-        this.updateCardPreview(cardId);
-        this.refreshCardSelection();
+        this.selectCardAt(index);
       });
       hit.on('pointerout', () => {
         if (this.isTouchPointer(this.input.activePointer)) {
@@ -1896,7 +1954,7 @@ export class GameScene extends Phaser.Scene {
         this.refreshCardSelection();
       });
       hit.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-        this.onCardPointerDown(cardId, pointer);
+        this.onCardPointerDown(cardId, index, pointer);
       });
 
       container.add([shadow, body, headerBand, title, costBadge, costText, effect, stateText, hit]);
@@ -1916,6 +1974,7 @@ export class GameScene extends Phaser.Scene {
 
       this.cardVisuals.push({
         cardId,
+        handIndex: index,
         container,
         body,
         baseY: y,
@@ -1925,7 +1984,7 @@ export class GameScene extends Phaser.Scene {
 
   private refreshCardSelection(): void {
     this.cardVisuals.forEach((entry) => {
-      const selected = entry.cardId === this.selectedCardId;
+      const selected = entry.handIndex === this.selectedHandIndex;
       entry.body.setStrokeStyle(selected ? 4 : 2, selected ? THEME.gold : 0xf1dbc2);
       this.tweens.killTweensOf(entry.container);
       if (this.animationsEnabled) {
@@ -2075,8 +2134,11 @@ export class GameScene extends Phaser.Scene {
     this.updateActionPanel(selected, affordable);
   }
 
-  private getCardWorldPosition(cardId: string): Point | null {
-    const visual = this.cardVisuals.find((entry) => entry.cardId === cardId);
+  private getCardWorldPosition(cardId: string, handIndex?: number): Point | null {
+    const visual =
+      handIndex === undefined
+        ? this.cardVisuals.find((entry) => entry.cardId === cardId)
+        : this.cardVisuals.find((entry) => entry.handIndex === handIndex && entry.cardId === cardId);
     if (!visual) {
       return null;
     }
@@ -2119,6 +2181,7 @@ export class GameScene extends Phaser.Scene {
       activePlayer: this.state.turn.current,
       revealedEnemyCardId: this.aiPendingAction?.type === 'play_card' ? this.aiPendingAction.cardId : null,
       selectedCardId: this.selectedCardId,
+      selectedHandIndex: this.selectedHandIndex,
       selectedCardName: selectedCard?.name ?? null,
       selectedCardPlayable: selectedCard ? canAffordCard(this.state, 'player', selectedCard.id) : false,
       selectedCardImpact: selectedCard ? this.describeCardImpact(selectedCard) : null,

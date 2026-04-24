@@ -15,8 +15,9 @@
 
 ### Implemented systems
 - Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, card play/discard, refill, effect resolution, statuses, and victory.
-- Card definitions in `src/game/cards.ts` are the authoritative v1 60-card library.
-- Card-effect assumptions in `src/game/assumptions.ts` document deterministic resolutions for ambiguous effects.
+- Card definitions in `src/game/cards.ts` remain the authoritative lookup table; `STARTER_DECK_CARD_IDS` is the active 30-card physical deck composition.
+- Duplicate card copies are represented by repeated ids in each player's draw pile, discard pile, and hand.
+- Player play/discard actions may include `handIndex` so duplicate copies in hand can be targeted safely.
 - AI controller in `src/game/ai.ts` prioritizes lethal, prevent-lethal, early economy, and heuristic best moves.
 - Persistence in `src/game/storage.ts` stores wins, losses, matches played, and the UI motion setting in localStorage.
 - Phaser scenes in `src/scenes/` render and orchestrate the reducer state.

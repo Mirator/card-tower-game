@@ -1,4 +1,4 @@
-import { CARD_BY_ID, ALL_CARD_IDS } from './cards';
+import { CARD_BY_ID, STARTER_DECK_CARD_IDS } from './cards';
 import { EMPTY_STATUSES, RESOURCE_ORDER, STARTING_VALUES } from './constants';
 import { SeededRng } from './rng';
 import type {
@@ -701,8 +701,8 @@ function resolveEffectList(
 export function createInitialGameState(seed: number): GameState {
   const rng = new SeededRng(seed);
 
-  const playerDeck = shuffle(ALL_CARD_IDS, rng.fork(0xa11ce));
-  const aiDeck = shuffle(ALL_CARD_IDS, rng.fork(0xb00b5));
+  const playerDeck = shuffle(STARTER_DECK_CARD_IDS, rng.fork(0xa11ce));
+  const aiDeck = shuffle(STARTER_DECK_CARD_IDS, rng.fork(0xb00b5));
 
   const state: GameState = {
     players: {
@@ -730,8 +730,15 @@ export function createInitialGameState(seed: number): GameState {
   return state;
 }
 
-function getCardInHand(player: PlayerState, cardId: string): CardDefinition | null {
-  if (!player.hand.includes(cardId)) {
+function isValidHandIndex(player: PlayerState, cardId: string, handIndex: number | undefined): boolean {
+  if (handIndex === undefined) {
+    return player.hand.includes(cardId);
+  }
+  return Number.isInteger(handIndex) && handIndex >= 0 && player.hand[handIndex] === cardId;
+}
+
+function getCardInHand(player: PlayerState, cardId: string, handIndex?: number): CardDefinition | null {
+  if (!isValidHandIndex(player, cardId, handIndex)) {
     return null;
   }
   return CARD_BY_ID[cardId] ?? null;
@@ -742,9 +749,12 @@ function spendCardCost(player: PlayerState, card: CardDefinition): void {
   normalizeResource(player, card.domain);
 }
 
-function removeCardFromHand(player: PlayerState, cardId: string): boolean {
-  const index = player.hand.indexOf(cardId);
+function removeCardFromHand(player: PlayerState, cardId: string, handIndex?: number): boolean {
+  const index = handIndex === undefined ? player.hand.indexOf(cardId) : handIndex;
   if (index === -1) {
+    return false;
+  }
+  if (player.hand[index] !== cardId) {
     return false;
   }
   player.hand.splice(index, 1);
@@ -805,7 +815,7 @@ function playCardAction(
   }
 
   const actor = state.players[action.playerId];
-  const card = getCardInHand(actor, action.cardId);
+  const card = getCardInHand(actor, action.cardId, action.handIndex);
   if (!card) {
     errors.push('Card is not in hand.');
     return;
@@ -816,7 +826,10 @@ function playCardAction(
     return;
   }
 
-  removeCardFromHand(actor, card.id);
+  if (!removeCardFromHand(actor, card.id, action.handIndex)) {
+    errors.push('Card is not in hand.');
+    return;
+  }
   spendCardCost(actor, card);
   logs.push(`${action.playerId === 'player' ? 'You' : 'AI'} play ${card.name}.`);
 
@@ -859,7 +872,7 @@ function discardCardAction(
   }
 
   const actor = state.players[action.playerId];
-  const removed = removeCardFromHand(actor, action.cardId);
+  const removed = removeCardFromHand(actor, action.cardId, action.handIndex);
   if (!removed) {
     errors.push('Card is not in hand.');
     return;

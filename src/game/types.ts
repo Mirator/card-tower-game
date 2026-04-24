@@ -120,8 +120,8 @@ export interface GameState {
 
 export type Action =
   | { type: 'start_turn' }
-  | { type: 'play_card'; playerId: PlayerId; cardId: string }
-  | { type: 'discard_card'; playerId: PlayerId; cardId: string }
+  | { type: 'play_card'; playerId: PlayerId; cardId: string; handIndex?: number }
+  | { type: 'discard_card'; playerId: PlayerId; cardId: string; handIndex?: number }
   | { type: 'end_turn' }
   | { type: 'rematch'; seed?: number };
 
