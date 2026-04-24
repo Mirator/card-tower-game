@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { loadMeta, updateMeta } from '../game/storage';
 
+const NARROW_LAYOUT_WIDTH = 720;
+
 function createButton(
   scene: Phaser.Scene,
   x: number,
@@ -44,65 +46,76 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+    const narrow = width < NARROW_LAYOUT_WIDTH;
 
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x1f3348, 0x1f3348, 0x132034, 0x132034, 1);
     bg.fillRect(0, 0, width, height);
 
     this.add
-      .text(width / 2, 110, 'CARD TOWER DUEL', {
+      .text(width / 2, narrow ? 82 : 110, 'CARD TOWER DUEL', {
         fontFamily: 'Georgia',
-        fontSize: '58px',
+        fontSize: narrow ? '34px' : '58px',
         color: '#f3efe4',
         fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: Math.max(280, width - 28) },
       })
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, 170, 'Build your tower or collapse theirs in one-card turns.', {
+      .text(width / 2, narrow ? 132 : 170, 'Build your tower or collapse theirs in one-card turns.', {
         fontFamily: 'Georgia',
-        fontSize: '22px',
+        fontSize: narrow ? '16px' : '22px',
         color: '#d8dce2',
+        align: 'center',
+        wordWrap: { width: Math.max(280, width - 32) },
       })
       .setOrigin(0.5);
 
     const meta = loadMeta();
     this.animationsEnabled = meta.settings.animations;
 
-    const statsPanel = this.add.rectangle(width / 2, height / 2 - 40, 520, 190, 0xf0eee7, 0.95).setStrokeStyle(2, 0x9c947f);
+    const statsPanelWidth = narrow ? Math.max(300, width - 28) : 520;
+    const statsPanelHeight = narrow ? 176 : 190;
+    const statsPanel = this.add.rectangle(width / 2, height / 2 - (narrow ? 26 : 40), statsPanelWidth, statsPanelHeight, 0xf0eee7, 0.95).setStrokeStyle(2, 0x9c947f);
     this.add
-      .text(statsPanel.x, statsPanel.y - 58, 'Career Stats', {
+      .text(statsPanel.x, statsPanel.y - (narrow ? 54 : 58), 'Career Stats', {
         fontFamily: 'Georgia',
-        fontSize: '28px',
+        fontSize: narrow ? '24px' : '28px',
         color: '#1f2226',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
     this.add
-      .text(statsPanel.x, statsPanel.y - 5, `Matches: ${meta.stats.matchesPlayed}   Wins: ${meta.stats.wins}   Losses: ${meta.stats.losses}`, {
+      .text(statsPanel.x, statsPanel.y - (narrow ? 10 : 5), narrow
+        ? `Matches: ${meta.stats.matchesPlayed}\nWins: ${meta.stats.wins}   Losses: ${meta.stats.losses}`
+        : `Matches: ${meta.stats.matchesPlayed}   Wins: ${meta.stats.wins}   Losses: ${meta.stats.losses}`, {
         fontFamily: 'Georgia',
-        fontSize: '24px',
+        fontSize: narrow ? '20px' : '24px',
         color: '#253343',
+        align: 'center',
+        lineSpacing: narrow ? 6 : 0,
       })
       .setOrigin(0.5);
 
     const animationLabel = this.add
-      .text(statsPanel.x - 120, statsPanel.y + 50, 'UI Motion', {
+      .text(statsPanel.x - (narrow ? 86 : 120), statsPanel.y + (narrow ? 52 : 50), 'UI Motion', {
         fontFamily: 'Georgia',
-        fontSize: '20px',
+        fontSize: narrow ? '17px' : '20px',
         color: '#253343',
       })
       .setOrigin(0.5);
 
     const toggleBg = this.add
-      .rectangle(statsPanel.x + 80, statsPanel.y + 50, 150, 44, this.animationsEnabled ? 0x2f8f5c : 0xa14f4f)
+      .rectangle(statsPanel.x + (narrow ? 82 : 80), statsPanel.y + (narrow ? 52 : 50), narrow ? 124 : 150, 44, this.animationsEnabled ? 0x2f8f5c : 0xa14f4f)
       .setStrokeStyle(2, 0xe8dec8)
       .setInteractive({ useHandCursor: true });
     const toggleText = this.add
       .text(toggleBg.x, toggleBg.y, this.animationsEnabled ? 'Enabled' : 'Disabled', {
         fontFamily: 'Georgia',
-        fontSize: '20px',
+        fontSize: narrow ? '17px' : '20px',
         color: '#f5f4ef',
         fontStyle: 'bold',
       })
@@ -122,7 +135,7 @@ export class MenuScene extends Phaser.Scene {
       }));
     });
 
-    createButton(this, width / 2, height - 150, 'Start Duel', () => {
+    createButton(this, width / 2, height - (narrow ? 134 : 150), 'Start Duel', () => {
       this.scene.start('GameScene');
     });
 
@@ -134,10 +147,12 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.add
-      .text(width / 2, height - 70, 'Desktop: left click play, right click discard. Mobile: swipe up/down on card.', {
+      .text(width / 2, height - (narrow ? 58 : 70), 'Desktop: left click play, right click discard. Mobile: swipe up/down on card.', {
         fontFamily: 'Georgia',
-        fontSize: '18px',
+        fontSize: narrow ? '13px' : '18px',
         color: '#cbd1da',
+        align: 'center',
+        wordWrap: { width: Math.max(280, width - 28) },
       })
       .setOrigin(0.5);
 

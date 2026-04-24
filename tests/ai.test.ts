@@ -43,6 +43,23 @@ describe('ai controller', () => {
     expect(move.reason).toBe('prevent_lethal');
   });
 
+  it('recognizes bypass-wall lethal threats when choosing defense', () => {
+    let state = withAiTurn(createInitialGameState(1310));
+    state.players.ai.tower = 5;
+    state.players.ai.wall = 100;
+    state.players.ai.hand = ['shield', 'strike'];
+    state.players.ai.crystals = 20;
+    state.players.ai.weapons = 20;
+
+    state.players.player.hand = ['arcane_blast'];
+    state.players.player.crystals = 20;
+
+    const move = evaluateAIMove(state);
+    expect(move.type).toBe('play_card');
+    expect(move.cardId).toBe('shield');
+    expect(move.reason).toBe('prevent_lethal');
+  });
+
   it('favors economy growth early in neutral position', () => {
     let state = withAiTurn(createInitialGameState(1400));
     state.turn.number = 2;

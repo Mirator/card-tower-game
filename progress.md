@@ -36,3 +36,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added Vite manual chunking so Phaser is emitted as a dedicated `phaser` chunk.
 - Tuned `build.chunkSizeWarningLimit` to 1400KB to match expected Phaser footprint and suppress false-positive warning.
 - Verified with `npm run build`: warning no longer appears.
+
+## Audit Follow-up Fixes
+- Fixed AI prevent-lethal logic so it simulates whether the player has a lethal next action, including bypass-wall tower damage and defensive counters such as Shield.
+- Added a regression test where AI at low tower/high wall chooses Shield against Arcane Blast instead of ignoring the bypass threat.
+- Gated browser automation globals (`render_game_to_text`, `advanceTime`, `__phaserGame`, `__game`) behind development mode or `VITE_EXPOSE_TEST_HOOKS=true`.
+- Added compact narrow-screen layouts for MenuScene and GameScene so phone-width screens no longer clip the title, panels, or hand row horizontally.
+- Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game Playwright client, a 375x667 dev smoke interaction, and a production preview check confirming automation globals are undefined.

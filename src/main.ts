@@ -1,4 +1,5 @@
 import './style.css';
+import { shouldExposeAutomationHooks } from './automation';
 import type { GameScene } from './scenes/GameScene';
 
 type TestingWindow = Window & {
@@ -8,6 +9,38 @@ type TestingWindow = Window & {
 };
 
 let game: import('phaser').Game | null = null;
+
+function attachTestingHooks(phaserGame: import('phaser').Game): void {
+  const testingWindow = window as TestingWindow;
+  testingWindow.__phaserGame = phaserGame;
+  testingWindow.render_game_to_text = () => {
+    if (!game) {
+      return JSON.stringify({ mode: 'boot', note: 'Game not initialized' }, null, 2);
+    }
+    const scene = game.scene.getScene('GameScene') as GameScene | undefined;
+    if (!scene || !scene.scene.isActive()) {
+      return JSON.stringify({ mode: 'menu', note: 'GameScene inactive' }, null, 2);
+    }
+    return scene.renderGameState();
+  };
+  testingWindow.advanceTime = (ms: number) => {
+    if (!game) {
+      return;
+    }
+    const scene = game.scene.getScene('GameScene') as GameScene | undefined;
+    if (!scene || !scene.scene.isActive()) {
+      return;
+    }
+    scene.advanceForTesting(ms);
+  };
+}
+
+function detachTestingHooks(): void {
+  const testingWindow = window as TestingWindow;
+  delete testingWindow.__phaserGame;
+  delete testingWindow.render_game_to_text;
+  delete testingWindow.advanceTime;
+}
 
 async function bootstrap(): Promise<void> {
   const Phaser = (await import('phaser')).default;
@@ -37,34 +70,16 @@ async function bootstrap(): Promise<void> {
     },
   });
 
-  const testingWindow = window as TestingWindow;
-  testingWindow.__phaserGame = game;
-  testingWindow.render_game_to_text = () => {
-    if (!game) {
-      return JSON.stringify({ mode: 'boot', note: 'Game not initialized' }, null, 2);
-    }
-    const scene = game.scene.getScene('GameScene') as GameScene | undefined;
-    if (!scene || !scene.scene.isActive()) {
-      return JSON.stringify({ mode: 'menu', note: 'GameScene inactive' }, null, 2);
-    }
-    return scene.renderGameState();
-  };
-  testingWindow.advanceTime = (ms: number) => {
-    if (!game) {
-      return;
-    }
-    const scene = game.scene.getScene('GameScene') as GameScene | undefined;
-    if (!scene || !scene.scene.isActive()) {
-      return;
-    }
-    scene.advanceForTesting(ms);
-  };
+  if (shouldExposeAutomationHooks()) {
+    attachTestingHooks(game);
+  }
 }
 
 void bootstrap();
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    detachTestingHooks();
     game?.destroy(true);
     game = null;
   });

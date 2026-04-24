@@ -1,12 +1,27 @@
 import { CARD_BY_ID } from './cards';
 import {
+  cloneGameState,
   estimateThreatDamage,
   generatorSnapshot,
   getPlayableActions,
+  isLethalAvailable,
   projectedPlayState,
   resourceSnapshot,
 } from './engine';
 import type { AIMove, GameState } from './types';
+
+function hasLethalOnNextAction(state: GameState, attackerId: 'player' | 'ai'): boolean {
+  if (state.phase !== 'playing') {
+    return state.winner === attackerId;
+  }
+
+  const projected = cloneGameState(state);
+  projected.turn.current = attackerId;
+  projected.turn.started = false;
+  projected.turn.actionTaken = false;
+
+  return isLethalAvailable(projected, attackerId);
+}
 
 function evaluateHeuristic(before: GameState, after: GameState): number {
   const meBefore = before.players.ai;
@@ -88,6 +103,21 @@ export function evaluateAIMove(state: GameState): AIMove {
       score: lethal.score,
       reason: 'lethal',
     };
+  }
+
+  const playerHasLethal = hasLethalOnNextAction(state, 'player');
+  if (playerHasLethal) {
+    const defensive = simulated
+      .filter((entry) => !hasLethalOnNextAction(entry.simState, 'player'))
+      .sort((a, b) => b.score - a.score)[0];
+
+    if (defensive) {
+      return {
+        ...defensive.candidate,
+        score: defensive.score,
+        reason: 'prevent_lethal',
+      };
+    }
   }
 
   const currentThreat = estimateThreatDamage(state, 'player');
