@@ -79,3 +79,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Updated specs, root GDD, and README to document the 30-card deck, discard reshuffle loop, and simpler active card list.
 - Added tests for deck composition, discard reshuffle, and duplicate hand-slot targeting.
 - Verified with `npm run lint`, `npm test`, `npm run build`, a starter-deck doc consistency script, and Playwright smoke artifacts in `output/basic-deck-smoke/`.
+
+## Card Screen UI Refresh
+- Reworked the live hand cards into rounded physical-card components with domain-tinted fills, top-left resource icons, top-right cost badges, center illustrations, and compact bottom effect text.
+- Added a top-center face-up draw preview card beside the deck and renamed the duel presentation to `Black` vs `Red` with `Castle` / `Wall` labels in the main HUD.
+- Changed unaffordable card clicks to stay quiet instead of writing failure logs, while keeping selection, keyboard, touch, and explicit Play/Discard actions intact.
+- Updated `specs/09-ui.md`, `README.md`, and `card_tower_game.md` to match the new layout and interaction wording.
+- Verified with `npm run lint`, `npm test`, `npm run build`, a direct Playwright page check on `http://127.0.0.1:4173`, and smoke screenshots/state dumps in `output/ui-card-smoke/`.

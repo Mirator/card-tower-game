@@ -8,6 +8,8 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 - Deterministic reducer-based turn engine
 - AI opponent with lethal/prevent-lethal/heuristic priorities
 - Boot/Menu/Game scene flow with rematch loop
+- Black vs Red duel screen with top draw preview and 6-card hand row
+- Card UI with type icons, center illustrations, and disabled grey state
 - Selected-card command panel with explicit Play and Discard actions
 - Local persistence for stats/settings (`localStorage`)
 - Dev-gated automation hooks for scripted validation
@@ -29,7 +31,8 @@ npm run build
 
 ## Controls
 - `Enter` or `Space` on menu: start match
-- Left click a card: play it if affordable
+- Left click a full-color card: play it immediately
+- Left click a grey card: no action
 - Right click a card: discard/cycle it
 - Hover or tap a card: select and preview it
 - `Enter` during a match: play selected card

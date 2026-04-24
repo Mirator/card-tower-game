@@ -3,7 +3,7 @@
 ## Overview
 Tower Card Game is a fast, untimed, turn-based, two-player card strategy game for the browser. It follows the classic castle-vs-castle resource duel structure: three resources, one card or discard per turn, a simple 30-card physical starter deck, and a race to build or destroy towers.
 
-The player and AI opponent manage three resource economies, draw cards, and play one card per turn to attack, defend, grow production, or disrupt the opponent. The match ends when one side reaches the tower goal or destroys the opponent's tower.
+The player and AI opponent manage three resource economies, draw cards, and play one card per turn to attack, defend, grow production, or disrupt the opponent. The match ends when one side reaches the castle goal or destroys the opponent's castle.
 
 ## Product goals
 - Compact, replayable single-player web game with short matches
@@ -112,14 +112,15 @@ These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=t
 
 ## Game screen
 The implemented UI uses:
-- Slim top turn bar with current turn, enemy tower/wall, goal, deck count, and turn chips
-- Left Player A panel and right Player B panel with generators, resources, tower, and wall
-- Center battlefield with tower progress meters, wall shields, danger glow, played-card travel, and impact feedback
-- Bottom cockpit with hand cards, selected-card preview, explicit Play/Discard buttons, compact battle feed, and minimal controls hint
+- Slim top turn bar with draw pile, latest drawn-card preview, current turn, enemy castle/wall, goal, deck count, and turn chips
+- Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
+- Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, and impact feedback
+- Bottom cockpit with 6 visible hand cards, selected-card preview, explicit Play/Discard buttons, compact battle feed, and minimal controls hint
 - No turn timer in v1
 
 Controls:
-- Left click a card: play it if affordable
+- Left click a playable card: play it immediately
+- Left click an unplayable card: no action
 - Right click a card: discard/cycle it
 - Hover or tap a card: select and preview it
 - Enter: play selected card
@@ -185,4 +186,4 @@ Both players use this same physical deck composition.
 - Discard as fallback or cycle option
 
 ## One-sentence pitch
-A fast, browser-based Phaser card duel where players build or destroy towers through tight, resource-driven decisions.
+A fast, browser-based Phaser card duel where players build or destroy castles through tight, resource-driven decisions.
