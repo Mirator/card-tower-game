@@ -54,6 +54,16 @@ interface Point {
 
 const SWIPE_THRESHOLD = 44;
 const NARROW_LAYOUT_WIDTH = 720;
+const ANIMATION_PACE = 1.5;
+const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
+
+function animDuration(ms: number): number {
+  return Math.round(ms * ANIMATION_PACE);
+}
+
+function animDelay(ms: number): number {
+  return Math.round(ms * ANIMATION_PACE);
+}
 
 const RESOURCE_META: Record<
   Resource,
@@ -866,14 +876,18 @@ export class GameScene extends Phaser.Scene {
         const delta = after[resource] - before[resource];
         if (delta !== 0) {
           const text = `${delta > 0 ? '+' : ''}${delta} ${RESOURCE_META[resource].resourceName}`;
-          this.spawnFloatingText(this.getPanelAnchor(playerId, resources.indexOf(resource) + 1), text, delta > 0 ? '#9bf2b8' : '#ffc0c0');
+          this.spawnFloatingText(this.getPanelAnchor(playerId, resources.indexOf(resource) + 1), text, delta > 0 ? '#9bf2b8' : '#ffc0c0', {
+            durationMultiplier: RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER,
+          });
         }
 
         const generatorKey = RESOURCE_META[resource].generatorKey;
         const generatorDelta = after[generatorKey] - before[generatorKey];
         if (generatorDelta !== 0) {
           const text = `${generatorDelta > 0 ? '+' : ''}${generatorDelta} ${RESOURCE_META[resource].label}`;
-          this.spawnFloatingText(this.getPanelAnchor(playerId, resources.indexOf(resource) + 1), text, '#fff2b0');
+          this.spawnFloatingText(this.getPanelAnchor(playerId, resources.indexOf(resource) + 1), text, '#fff2b0', {
+            durationMultiplier: RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER,
+          });
         }
       }
 
@@ -919,7 +933,8 @@ export class GameScene extends Phaser.Scene {
       scaleY: 1.12,
       yoyo: true,
       repeat: 1,
-      duration: 110,
+      duration: animDuration(110),
+      ease: 'Sine.InOut',
     });
   }
 
@@ -951,7 +966,8 @@ export class GameScene extends Phaser.Scene {
       alpha: 0,
       scaleX: 0.72,
       scaleY: 0.72,
-      duration: 340,
+      duration: animDuration(340),
+      ease: 'Sine.InOut',
       onComplete: () => {
         cloneBody.destroy();
         cloneText.destroy();
@@ -971,12 +987,14 @@ export class GameScene extends Phaser.Scene {
       x: tower.container.x + 6,
       yoyo: true,
       repeat: 3,
-      duration: 36,
+      duration: animDuration(36),
+      ease: 'Sine.InOut',
       onComplete: () => {
         this.tweens.add({
           targets: tower.flash,
           alpha: 0,
-          duration: 180,
+          duration: animDuration(180),
+          ease: 'Sine.Out',
         });
       },
     });
@@ -995,14 +1013,20 @@ export class GameScene extends Phaser.Scene {
       alpha: 0,
       scaleX: 1.24,
       scaleY: 1.24,
-      duration: 460,
+      duration: animDuration(460),
+      ease: 'Sine.Out',
       onComplete: () => {
         tower.glow.setVisible(false);
       },
     });
   }
 
-  private spawnFloatingText(anchor: Point, text: string, color: string): void {
+  private spawnFloatingText(
+    anchor: Point,
+    text: string,
+    color: string,
+    options: { durationMultiplier?: number } = {},
+  ): void {
     const floating = this.add
       .text(anchor.x, anchor.y, text, {
         fontFamily: 'Georgia',
@@ -1018,7 +1042,7 @@ export class GameScene extends Phaser.Scene {
       targets: floating,
       y: anchor.y - 48,
       alpha: 0,
-      duration: 640,
+      duration: animDuration(640 * (options.durationMultiplier ?? 1)),
       ease: 'Sine.Out',
       onComplete: () => floating.destroy(),
     });
@@ -1372,8 +1396,9 @@ export class GameScene extends Phaser.Scene {
           targets: container,
           alpha: 1,
           y,
-          duration: 180,
-          delay: index * 24,
+          duration: animDuration(180),
+          delay: animDelay(index * 24),
+          ease: 'Sine.Out',
         });
       }
 

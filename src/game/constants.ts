@@ -40,7 +40,7 @@ export const EMPTY_STATUSES: StatusState = {
   curseTowerLoss: 0,
 };
 
-export const AI_DELAY_MS = 750;
+export const AI_DELAY_MS = 1125;
 
 export const GAME_WIDTH = 1200;
 export const GAME_HEIGHT = 820;

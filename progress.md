@@ -50,3 +50,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Removed `timerDisplaySeconds` from `render_game_to_text`.
 - Updated the product/UI specs to describe v1 as fast but untimed.
 - Verified with `npm run lint`, `npm test`, `npm run build`, desktop Playwright smoke, and 375x667 mobile smoke; screenshots show no timer UI and text state has no timer field.
+
+## Animation Pacing
+- Added shared animation pacing helpers in `GameScene` and slowed visible tweens by 50%.
+- Increased the AI response delay from 750ms to 1125ms to match the calmer turn rhythm.
+- Added smoother easing to deck draw, card play, tower damage/heal, floating number, and hand reveal tweens.
+- Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game smoke client, and a mid-action Playwright capture confirming longer-lived floating numbers/card motion without console errors.
+- Extended resource/generator floating notifications to stay visible 2x longer than other floating text so resource changes are easier to read.
