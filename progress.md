@@ -57,3 +57,4 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added smoother easing to deck draw, card play, tower damage/heal, floating number, and hand reveal tweens.
 - Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game smoke client, and a mid-action Playwright capture confirming longer-lived floating numbers/card motion without console errors.
 - Extended resource/generator floating notifications to stay visible 2x longer than other floating text so resource changes are easier to read.
+- Added an enemy card reveal step: AI-selected cards are shown in the center for a short hold before their effects/resources resolve and the turn passes back.

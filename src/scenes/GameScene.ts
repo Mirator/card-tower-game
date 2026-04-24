@@ -56,6 +56,7 @@ const SWIPE_THRESHOLD = 44;
 const NARROW_LAYOUT_WIDTH = 720;
 const ANIMATION_PACE = 1.5;
 const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
+const ENEMY_CARD_REVEAL_MS = 2200;
 
 function animDuration(ms: number): number {
   return Math.round(ms * ANIMATION_PACE);
@@ -168,6 +169,9 @@ export class GameScene extends Phaser.Scene {
 
   private selectedCardId: string | null = null;
   private aiCountdownMs: number | null = null;
+  private aiRevealCountdownMs: number | null = null;
+  private aiPendingAction: Action | null = null;
+  private enemyCardRevealContainer: Phaser.GameObjects.Container | null = null;
   private resultPersisted = false;
 
   private animationsEnabled = true;
@@ -225,6 +229,7 @@ export class GameScene extends Phaser.Scene {
 
   private destroyLayout(): void {
     this.cardVisuals = [];
+    this.enemyCardRevealContainer = null;
 
     this.backgroundContainer?.destroy(true);
     this.topCenterContainer?.destroy(true);
@@ -817,6 +822,9 @@ export class GameScene extends Phaser.Scene {
 
     this.selectedCardId = null;
     this.aiCountdownMs = null;
+    this.aiRevealCountdownMs = null;
+    this.aiPendingAction = null;
+    this.clearEnemyCardReveal();
     this.gestureState.clear();
 
     this.endOverlay.setVisible(false);
@@ -975,6 +983,109 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private showEnemyCardReveal(cardId: string): void {
+    const card = CARD_BY_ID[cardId];
+    if (!card) {
+      return;
+    }
+
+    this.clearEnemyCardReveal();
+
+    const narrow = this.isNarrowLayout();
+    const width = narrow ? Math.min(250, this.scale.width - 44) : 292;
+    const height = narrow ? 148 : 174;
+    const x = this.scale.width / 2;
+    const y = narrow ? Math.max(190, this.scale.height * 0.38) : this.scale.height * 0.43;
+    const cardColor = cardTypeColor(card.domain);
+
+    const shadow = this.add.rectangle(8, 10, width, height, 0x06101e, 0.58);
+    const frame = this.add
+      .rectangle(0, 0, width, height, cardColor, 0.98)
+      .setStrokeStyle(4, 0xffe2b8, 0.95);
+    const header = this.add.rectangle(0, -height / 2 + 22, width - 18, 34, 0x121c2b, 0.78);
+    const label = this.add
+      .text(0, -height / 2 + 8, 'Opponent plays', {
+        fontFamily: 'Georgia',
+        fontSize: narrow ? '14px' : '16px',
+        color: '#ffe9c8',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0);
+    const title = this.add
+      .text(0, -height / 2 + 48, card.name, {
+        fontFamily: 'Georgia',
+        fontSize: narrow ? '24px' : '30px',
+        color: '#fff8e8',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: width - 34 },
+      })
+      .setOrigin(0.5, 0);
+    const cost = this.add
+      .text(0, title.y + (narrow ? 34 : 42), `${card.domain.toUpperCase()} ${card.cost}`, {
+        fontFamily: 'Georgia',
+        fontSize: narrow ? '13px' : '15px',
+        color: '#fbe0b6',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0);
+    const text = this.add
+      .text(0, height / 2 - (narrow ? 48 : 54), card.text, {
+        fontFamily: 'Georgia',
+        fontSize: narrow ? '13px' : '15px',
+        color: '#fff3dd',
+        align: 'center',
+        wordWrap: { width: width - 40 },
+      })
+      .setOrigin(0.5, 0);
+
+    const reveal = this.add.container(x, y, [shadow, frame, header, label, title, cost, text]);
+    reveal.setDepth(55);
+    reveal.setAlpha(this.animationsEnabled ? 0 : 1);
+    reveal.setScale(this.animationsEnabled ? 0.88 : 1);
+    this.overlayContainer.add(reveal);
+    this.enemyCardRevealContainer = reveal;
+
+    this.turnLabelText.setText('Opponent plays a card');
+    this.statusText.setText(`AI reveals ${card.name}. Effects resolve shortly.`);
+
+    if (this.animationsEnabled) {
+      this.tweens.add({
+        targets: reveal,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: animDuration(220),
+        ease: 'Back.Out',
+      });
+    }
+  }
+
+  private clearEnemyCardReveal(animated = false): void {
+    const reveal = this.enemyCardRevealContainer;
+    if (!reveal) {
+      return;
+    }
+
+    this.enemyCardRevealContainer = null;
+    this.tweens.killTweensOf(reveal);
+
+    if (animated && this.animationsEnabled) {
+      this.tweens.add({
+        targets: reveal,
+        alpha: 0,
+        scaleX: 0.94,
+        scaleY: 0.94,
+        duration: animDuration(180),
+        ease: 'Sine.In',
+        onComplete: () => reveal.destroy(true),
+      });
+      return;
+    }
+
+    reveal.destroy(true);
+  }
+
   private animateTowerDamage(playerId: PlayerId): void {
     const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
     this.tweens.killTweensOf(tower.container);
@@ -1070,6 +1181,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tickAi(delta: number): void {
+    if (this.aiRevealCountdownMs !== null) {
+      this.aiRevealCountdownMs -= delta;
+      if (this.aiRevealCountdownMs > 0) {
+        return;
+      }
+
+      const pendingAction = this.aiPendingAction;
+      this.aiRevealCountdownMs = null;
+      this.aiPendingAction = null;
+      this.clearEnemyCardReveal(true);
+
+      if (pendingAction && this.state.phase === 'playing') {
+        this.resolveAiAction(pendingAction);
+      }
+      return;
+    }
+
     if (this.aiCountdownMs === null || this.state.phase !== 'playing') {
       return;
     }
@@ -1091,6 +1219,17 @@ export class GameScene extends Phaser.Scene {
         ? { type: 'play_card', playerId: 'ai', cardId: move.cardId }
         : { type: 'discard_card', playerId: 'ai', cardId: move.cardId };
 
+    if (action.type === 'play_card') {
+      this.aiPendingAction = action;
+      this.aiRevealCountdownMs = ENEMY_CARD_REVEAL_MS;
+      this.showEnemyCardReveal(action.cardId);
+      return;
+    }
+
+    this.resolveAiAction(action);
+  }
+
+  private resolveAiAction(action: Action): void {
     const ok = this.dispatch(action);
     if (!ok) {
       return;
@@ -1470,6 +1609,7 @@ export class GameScene extends Phaser.Scene {
     const payload = JSON.parse(summarizeForText(this.state)) as Record<string, unknown>;
     payload.ui = {
       activePlayer: this.state.turn.current,
+      revealedEnemyCardId: this.aiPendingAction?.type === 'play_card' ? this.aiPendingAction.cardId : null,
       selectedCardId: this.selectedCardId,
       phase: this.state.phase,
     };
