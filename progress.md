@@ -66,3 +66,9 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Reworked resource panels so generator income is shown as +X, both sides use the same internal reading order, and floating resource notifications spawn outside the panels.
 - Added a compact battle feed and routed played-card travel toward affected towers/resource panels before impact.
 - Updated render_game_to_text coordinate notes to match the new battlefield/hand/feed UI model.
+
+## UI/UX Command Pass
+- Added an explicit selected-card command panel with Play and Discard buttons, ready/missing-resource status, and disabled Play state when unaffordable or outside the player action window.
+- Added default card selection, richer effect impact previews, and keyboard actions: Enter plays the selected card, Backspace/Delete discards it.
+- Updated `render_game_to_text` UI payload with selected card name, playability, and impact preview so automation/state inspection matches the visible command surface.
+- Verified the Play button path in-browser: selected playable card resolves, turn advances, and enemy reveal appears without console errors.

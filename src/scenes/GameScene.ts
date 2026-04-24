@@ -6,7 +6,7 @@ import { AI_DELAY_MS } from '../game/constants';
 import { canAffordCard, cloneGameState, createInitialGameState, reduceGameState, summarizeForText } from '../game/engine';
 import { SeededRng, seedFromNow } from '../game/rng';
 import { loadMeta, updateMeta } from '../game/storage';
-import type { Action, GameMetaV1, GameState, PlayerId, Resource } from '../game/types';
+import type { Action, CardDefinition, EffectSpec, GameMetaV1, GameState, PlayerId, Resource } from '../game/types';
 
 type PanelSide = 'left' | 'right';
 
@@ -45,6 +45,12 @@ interface CardVisual {
   container: Phaser.GameObjects.Container;
   body: Phaser.GameObjects.Rectangle;
   baseY: number;
+}
+
+interface ActionButtonRefs {
+  container: Phaser.GameObjects.Container;
+  bg: Phaser.GameObjects.Rectangle;
+  text: Phaser.GameObjects.Text;
 }
 
 interface GestureState {
@@ -149,6 +155,36 @@ function createButton(
   return scene.add.container(x, y, [bg, text, hit]);
 }
 
+function createActionButton(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  label: string,
+  fill: number,
+  onClick: () => void,
+): ActionButtonRefs {
+  const bg = scene.add.rectangle(0, 0, width, 34, fill, 0.96).setStrokeStyle(2, THEME.gold, 0.82);
+  const text = scene.add
+    .text(0, 0, label, {
+      fontFamily: FONT_FAMILY,
+      fontSize: '14px',
+      color: '#fff4dd',
+      fontStyle: 'bold',
+    })
+    .setOrigin(0.5);
+  const hit = scene.add.rectangle(0, 0, width, 34, 0x000000, 0).setInteractive({ useHandCursor: true });
+  hit.on('pointerover', () => bg.setScale(1.03, 1.04));
+  hit.on('pointerout', () => bg.setScale(1));
+  hit.on('pointerdown', onClick);
+
+  return {
+    container: scene.add.container(x, y, [bg, text, hit]),
+    bg,
+    text,
+  };
+}
+
 export class GameScene extends Phaser.Scene {
   private state!: GameState;
   private rng!: SeededRng;
@@ -180,6 +216,11 @@ export class GameScene extends Phaser.Scene {
   private handPreviewText!: Phaser.GameObjects.Text;
   private handHintText!: Phaser.GameObjects.Text;
   private battleFeedText!: Phaser.GameObjects.Text;
+  private actionPanelContainer!: Phaser.GameObjects.Container;
+  private actionPanelTitleText!: Phaser.GameObjects.Text;
+  private actionPanelStatusText!: Phaser.GameObjects.Text;
+  private playActionButton!: ActionButtonRefs;
+  private discardActionButton!: ActionButtonRefs;
   private handSurface!: Phaser.GameObjects.Rectangle;
 
   private endOverlay!: Phaser.GameObjects.Container;
@@ -843,10 +884,50 @@ export class GameScene extends Phaser.Scene {
         align: 'right',
       })
       .setOrigin(1, 0);
+    this.handHintText.setVisible(false);
 
-    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 54 : 88));
+    const actionPanelWidth = narrow ? Math.min(168, width * 0.42) : Math.min(226, width * 0.2);
+    const actionPanelX = width - actionPanelWidth / 2 - 22;
+    const actionPanelY = panelTop + (narrow ? 42 : 46);
+    const actionPanelBg = this.add
+      .rectangle(0, 0, actionPanelWidth, narrow ? 70 : 68, 0x0f1725, 0.88)
+      .setStrokeStyle(2, THEME.gold, 0.52);
+    this.actionPanelTitleText = this.add
+      .text(0, narrow ? -23 : -21, 'Select a card', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '12px' : '15px',
+        color: '#fff1d2',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: actionPanelWidth - 20 },
+      })
+      .setOrigin(0.5);
+    this.actionPanelStatusText = this.add
+      .text(0, narrow ? -7 : -3, 'Choose from hand', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '10px' : '12px',
+        color: '#cbd8ee',
+        align: 'center',
+        wordWrap: { width: actionPanelWidth - 20 },
+      })
+      .setOrigin(0.5);
+    this.playActionButton = createActionButton(this, -actionPanelWidth * 0.24, narrow ? 23 : 22, actionPanelWidth * 0.42, 'Play', 0x2f8f5d, () => {
+      this.tryPlaySelectedCard();
+    });
+    this.discardActionButton = createActionButton(this, actionPanelWidth * 0.24, narrow ? 23 : 22, actionPanelWidth * 0.42, 'Discard', 0x8b4f3e, () => {
+      this.tryDiscardSelectedCard();
+    });
+    this.actionPanelContainer = this.add.container(actionPanelX, actionPanelY, [
+      actionPanelBg,
+      this.actionPanelTitleText,
+      this.actionPanelStatusText,
+      this.playActionButton.container,
+      this.discardActionButton.container,
+    ]);
 
-    this.handContainer.add([this.handSurface, this.handPreviewText, this.battleFeedText, this.handHintText, this.handCardsContainer]);
+    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 46 : 72));
+
+    this.handContainer.add([this.handSurface, this.handPreviewText, this.battleFeedText, this.handHintText, this.actionPanelContainer, this.handCardsContainer]);
   }
 
   private createOverlayLayer(): void {
@@ -891,6 +972,18 @@ export class GameScene extends Phaser.Scene {
       if (this.scale.isFullscreen) {
         this.scale.stopFullscreen();
       }
+    });
+
+    this.input.keyboard?.on('keydown-ENTER', () => {
+      this.tryPlaySelectedCard();
+    });
+
+    this.input.keyboard?.on('keydown-BACKSPACE', () => {
+      this.tryDiscardSelectedCard();
+    });
+
+    this.input.keyboard?.on('keydown-DELETE', () => {
+      this.tryDiscardSelectedCard();
     });
   }
 
@@ -1531,6 +1624,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private tryPlaySelectedCard(): void {
+    if (!this.selectedCardId) {
+      this.selectDefaultCard();
+    }
+    if (!this.selectedCardId) {
+      return;
+    }
+
+    this.tryPlayCard(this.selectedCardId);
+  }
+
   private tryDiscardCard(cardId: string): void {
     this.selectedCardId = cardId;
     this.updateCardPreview(cardId);
@@ -1553,9 +1657,30 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private tryDiscardSelectedCard(): void {
+    if (!this.selectedCardId) {
+      this.selectDefaultCard();
+    }
+    if (!this.selectedCardId) {
+      return;
+    }
+
+    this.tryDiscardCard(this.selectedCardId);
+  }
+
+  private selectDefaultCard(): void {
+    const hand = this.state.players.player.hand;
+    if (this.selectedCardId && hand.includes(this.selectedCardId)) {
+      return;
+    }
+
+    this.selectedCardId = hand.find((cardId) => canAffordCard(this.state, 'player', cardId)) ?? hand[0] ?? null;
+  }
+
   private updateHud(): void {
     const player = this.state.players.player;
     const ai = this.state.players.ai;
+    this.selectDefaultCard();
 
     this.opponentNameText.setText(`Enemy T${ai.tower} / W${ai.wall}`);
     this.opponentTowerText.setText(`Goal ${this.state.winTower} | Deck ${player.deck.length}`);
@@ -1571,7 +1696,9 @@ export class GameScene extends Phaser.Scene {
           ? 'Victory secured.'
           : 'Defeat. The tower fell.'
         : this.state.turn.current === 'player'
-          ? 'Choose one card: play it, or discard to cycle.'
+          ? this.selectedCardId
+            ? 'Preview the selected card, then Play or Discard.'
+            : 'Select a card to inspect your options.'
           : this.aiPendingAction
             ? 'Opponent card revealed. Effects resolve next.'
             : 'Opponent is choosing a response.';
@@ -1618,8 +1745,8 @@ export class GameScene extends Phaser.Scene {
     this.handHintText.setText(
       this.state.turn.current === 'player'
         ? narrow
-          ? 'Play: swipe up\nDiscard: down'
-          : 'Click card to play | right-click discard'
+          ? 'Tap card\nPlay / discard below'
+          : 'Enter plays selected | Backspace discards'
         : narrow
           ? 'Opponent turn'
           : 'Opponent turn: watch the center stage',
@@ -1817,17 +1944,135 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private getPlayerResource(resource: Resource): number {
+    return this.state.players.player[resource];
+  }
+
+  private describeCardImpact(card: CardDefinition): string {
+    const parts = card.effects.map((effect) => this.describeEffectImpact(effect)).filter(Boolean);
+    return parts.slice(0, 3).join(' | ') || card.text;
+  }
+
+  private describeEffectImpact(effect: EffectSpec): string {
+    const targetLabel = 'target' in effect && effect.target === 'opponent' ? 'Enemy' : 'You';
+    const signed = (amount: number): string => `${amount > 0 ? '+' : ''}${amount}`;
+
+    switch (effect.type) {
+      case 'adjustWall':
+        return `${targetLabel} wall ${signed(effect.amount)}`;
+      case 'adjustTower':
+        return `${targetLabel} tower ${signed(effect.amount)}`;
+      case 'adjustResource':
+        return `${targetLabel} ${RESOURCE_META[effect.resource].resourceName} ${signed(effect.amount)}`;
+      case 'adjustRandomResource':
+        return `${targetLabel} random resource ${signed(effect.amount)}`;
+      case 'adjustAllResources':
+        return `${targetLabel} all resources ${signed(effect.amount)}`;
+      case 'adjustGenerator':
+        return `${targetLabel} ${effect.generator} ${signed(effect.amount)}`;
+      case 'adjustAllGenerators':
+        return `${targetLabel} all income ${signed(effect.amount)}`;
+      case 'attack': {
+        const total = effect.amount * (effect.hits ?? 1);
+        if (effect.bypassWall) {
+          return `Enemy tower -${total} bypass`;
+        }
+        if (effect.wallOnly) {
+          return `Enemy wall -${total}`;
+        }
+        return `Enemy wall/tower -${total}`;
+      }
+      case 'setNextAttackBonus':
+        return `Next attack +${effect.amount}`;
+      case 'setOutgoingDamagePenalty':
+        return `${effect.target === 'opponent' ? 'Enemy' : 'Your'} damage -${effect.amount}`;
+      case 'setIncomingDamageReduction':
+        return `Next hit reduced by ${effect.amount}`;
+      case 'setBarrier':
+        return `Barrier ${effect.amount}`;
+      case 'setShield':
+        return 'Block next attack';
+      case 'setSkipGain':
+        return `${effect.target === 'opponent' ? 'Enemy' : 'You'} skip income`;
+      case 'setCurse':
+        return `${effect.target === 'opponent' ? 'Enemy' : 'You'} curse -${effect.towerLoss}/turn`;
+      case 'drawCards':
+        return `${effect.target === 'opponent' ? 'Enemy' : 'You'} draw ${effect.amount}`;
+      case 'discardCards':
+        return `${effect.target === 'opponent' ? 'Enemy' : 'You'} discard ${effect.amount}`;
+      case 'doubleWall':
+        return `Double wall up to ${effect.cap}`;
+      case 'towerPerGenerator':
+        return `Tower +${effect.amountPer} per ${effect.generator}`;
+      case 'wallToTower':
+        return `Convert ${effect.amount} wall to tower`;
+      case 'stealResources':
+        return `Steal ${effect.amount} resources`;
+      case 'convertResources':
+        return `Convert ${effect.amount} resources`;
+      case 'gainChosenResource':
+        return `Gain ${effect.amount} best resource`;
+      case 'swapResources':
+        return 'Swap resources';
+      case 'chaos':
+        return 'Chaotic resource swing';
+      case 'repeatLastResolved':
+        return 'Repeat last card effect';
+      case 'drainEnemyResources':
+        return `Enemy resources -${effect.amount}`;
+      case 'sabotageGenerators':
+        return 'Enemy all income -1';
+      case 'enemyDiscard':
+        return `Enemy discards ${effect.amount}`;
+    }
+  }
+
+  private setActionButtonEnabled(button: ActionButtonRefs, enabled: boolean, fill: number): void {
+    button.bg.setFillStyle(enabled ? fill : 0x39414d, enabled ? 0.96 : 0.54);
+    button.bg.setStrokeStyle(2, enabled ? THEME.gold : 0x7e8897, enabled ? 0.82 : 0.46);
+    button.text.setAlpha(enabled ? 1 : 0.55);
+    button.container.setAlpha(enabled ? 1 : 0.72);
+  }
+
+  private updateActionPanel(card: CardDefinition | null, affordable = false): void {
+    if (!this.actionPanelContainer) {
+      return;
+    }
+
+    const canAct = this.state.phase === 'playing' && this.state.turn.current === 'player' && this.state.turn.started && !this.state.turn.actionTaken;
+    if (!card) {
+      this.actionPanelTitleText.setText('Select a card');
+      this.actionPanelStatusText.setText('Hover or tap a card');
+      this.setActionButtonEnabled(this.playActionButton, false, 0x2f8f5d);
+      this.setActionButtonEnabled(this.discardActionButton, false, 0x8b4f3e);
+      return;
+    }
+
+    const owned = this.getPlayerResource(card.domain);
+    const shortfall = Math.max(0, card.cost - owned);
+    this.actionPanelTitleText.setText(card.name);
+    this.actionPanelStatusText.setText(
+      affordable ? `Ready: ${card.cost} ${RESOURCE_META[card.domain].resourceName}` : `Need ${shortfall} more ${RESOURCE_META[card.domain].resourceName}`,
+    );
+    this.setActionButtonEnabled(this.playActionButton, canAct && affordable, 0x2f8f5d);
+    this.setActionButtonEnabled(this.discardActionButton, canAct, 0x8b4f3e);
+  }
+
   private updateCardPreview(cardId?: string): void {
     const selected = cardId ? CARD_BY_ID[cardId] : null;
     if (!selected) {
-      this.handPreviewText.setText('Card preview\nTap or hover a card to inspect details.');
+      this.handPreviewText.setText('Command post\nSelect a card to preview its effect.');
+      this.updateActionPanel(null);
       return;
     }
 
     const affordable = canAffordCard(this.state, 'player', selected.id);
+    const resourceName = RESOURCE_META[selected.domain].resourceName;
+    const owned = this.getPlayerResource(selected.domain);
     this.handPreviewText.setText(
-      `${selected.name} (${selected.domain.toUpperCase()} ${selected.cost})\n${selected.text}\n${affordable ? 'Playable now' : 'Need more resources'}`,
+      `${selected.name} (${resourceName} ${owned}/${selected.cost})\n${this.describeCardImpact(selected)}\n${affordable ? 'Playable now' : `Need ${selected.cost - owned} more ${resourceName}`}`,
     );
+    this.updateActionPanel(selected, affordable);
   }
 
   private getCardWorldPosition(cardId: string): Point | null {
@@ -1869,10 +2114,14 @@ export class GameScene extends Phaser.Scene {
 
   public renderGameState(): string {
     const payload = JSON.parse(summarizeForText(this.state)) as Record<string, unknown>;
+    const selectedCard = this.selectedCardId ? CARD_BY_ID[this.selectedCardId] : null;
     payload.ui = {
       activePlayer: this.state.turn.current,
       revealedEnemyCardId: this.aiPendingAction?.type === 'play_card' ? this.aiPendingAction.cardId : null,
       selectedCardId: this.selectedCardId,
+      selectedCardName: selectedCard?.name ?? null,
+      selectedCardPlayable: selectedCard ? canAffordCard(this.state, 'player', selectedCard.id) : false,
+      selectedCardImpact: selectedCard ? this.describeCardImpact(selectedCard) : null,
       phase: this.state.phase,
     };
     return JSON.stringify(payload, null, 2);
