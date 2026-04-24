@@ -1078,7 +1078,7 @@ export function summarizeForText(state: GameState): string {
       },
       winner: state.winner,
       note: {
-        coords: 'No spatial board. top UI = AI, bottom UI = player, middle = event log.',
+        coords: 'No grid movement. Center = tower battlefield, side panels = resources, bottom = player hand and battle feed.',
       },
     },
     null,

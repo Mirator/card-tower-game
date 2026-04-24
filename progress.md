@@ -58,3 +58,11 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game smoke client, and a mid-action Playwright capture confirming longer-lived floating numbers/card motion without console errors.
 - Extended resource/generator floating notifications to stay visible 2x longer than other floating text so resource changes are easier to read.
 - Added an enemy card reveal step: AI-selected cards are shown in the center for a short hold before their effects/resources resolve and the turn passes back.
+
+## UI Redesign Pass
+- Replaced the large opponent info header with a slimmer turn bar showing current turn, compact enemy tower/wall, goal, and deck count.
+- Rebuilt the center battlefield as the primary stage with larger towers, wall shields, tower progress meters, danger glow, attack lanes, and impact bursts.
+- Enlarged player hand cards, added hover/selection lift, clearer affordability states, a darker card-table cockpit, and shorter persistent controls.
+- Reworked resource panels so generator income is shown as +X, both sides use the same internal reading order, and floating resource notifications spawn outside the panels.
+- Added a compact battle feed and routed played-card travel toward affected towers/resource panels before impact.
+- Updated render_game_to_text coordinate notes to match the new battlefield/hand/feed UI model.

@@ -19,6 +19,7 @@ interface ResourceBlockRefs {
 interface PlayerPanelRefs {
   side: PanelSide;
   width: number;
+  height: number;
   container: Phaser.GameObjects.Container;
   activeGlow: Phaser.GameObjects.Rectangle;
   headerText: Phaser.GameObjects.Text;
@@ -32,12 +33,18 @@ interface TowerVisualRefs {
   windows: Phaser.GameObjects.Rectangle[];
   flash: Phaser.GameObjects.Rectangle;
   glow: Phaser.GameObjects.Ellipse;
+  dangerGlow: Phaser.GameObjects.Ellipse;
+  wallShield: Phaser.GameObjects.Rectangle;
+  wallValueText: Phaser.GameObjects.Text;
+  towerValueText: Phaser.GameObjects.Text;
+  progressFill: Phaser.GameObjects.Rectangle;
 }
 
 interface CardVisual {
   cardId: string;
   container: Phaser.GameObjects.Container;
   body: Phaser.GameObjects.Rectangle;
+  baseY: number;
 }
 
 interface GestureState {
@@ -57,6 +64,19 @@ const NARROW_LAYOUT_WIDTH = 720;
 const ANIMATION_PACE = 1.5;
 const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
 const ENEMY_CARD_REVEAL_MS = 2200;
+
+const FONT_FAMILY = 'Georgia';
+
+const THEME = {
+  parchment: 0xf3efe4,
+  playerBlue: 0x3f63a8,
+  enemyRed: 0x9b514d,
+  brick: 0x9f5b46,
+  weapon: 0x3f7d4d,
+  crystal: 0x3f63a8,
+  gold: 0xffe2b8,
+  night: 0x0b1726,
+};
 
 function animDuration(ms: number): number {
   return Math.round(ms * ANIMATION_PACE);
@@ -95,12 +115,12 @@ const RESOURCE_META: Record<
 
 function cardTypeColor(domain: Resource): number {
   if (domain === 'bricks') {
-    return 0x8f4f3c;
+    return THEME.brick;
   }
   if (domain === 'weapons') {
-    return 0x3f7d4d;
+    return THEME.weapon;
   }
-  return 0x3f63a8;
+  return THEME.crystal;
 }
 
 function createButton(
@@ -114,7 +134,7 @@ function createButton(
   const bg = scene.add.rectangle(0, 0, width, 50, 0xd86f3d).setStrokeStyle(2, 0xf3d9c2);
   const text = scene.add
     .text(0, 0, label, {
-      fontFamily: 'Georgia',
+      fontFamily: FONT_FAMILY,
       fontSize: '20px',
       color: '#241d19',
       fontStyle: 'bold',
@@ -159,6 +179,7 @@ export class GameScene extends Phaser.Scene {
 
   private handPreviewText!: Phaser.GameObjects.Text;
   private handHintText!: Phaser.GameObjects.Text;
+  private battleFeedText!: Phaser.GameObjects.Text;
   private handSurface!: Phaser.GameObjects.Rectangle;
 
   private endOverlay!: Phaser.GameObjects.Container;
@@ -315,89 +336,92 @@ export class GameScene extends Phaser.Scene {
     this.topCenterContainer.setDepth(20);
 
     const narrow = this.isNarrowLayout(width);
-    const panelWidth = narrow ? Math.max(280, width - 24) : Math.max(420, Math.min(640, width * 0.48));
-    const panelHeight = narrow ? Math.max(104, Math.min(124, height * 0.15)) : Math.max(116, Math.min(142, height * 0.16));
+    const panelWidth = narrow ? Math.max(286, width - 18) : Math.max(560, Math.min(940, width * 0.58));
+    const panelHeight = narrow ? 66 : 76;
     const centerX = width / 2;
-    const topY = Math.max(8, Math.round(height * 0.02));
+    const topY = Math.max(8, Math.round(height * 0.018));
     const panelCenterY = topY + panelHeight / 2;
-    const deckWidth = narrow ? 50 : 68;
-    const deckHeight = narrow ? 70 : 92;
-    const deckX = centerX - panelWidth / 2 + (narrow ? 36 : 54);
+    const deckWidth = narrow ? 34 : 44;
+    const deckHeight = narrow ? 46 : 58;
+    const deckX = centerX - panelWidth / 2 + (narrow ? 28 : 40);
     const deckY = panelCenterY;
-    const textLeft = centerX - panelWidth / 2 + (narrow ? 72 : 132);
-    const textWrapWidth = narrow ? Math.max(102, panelWidth - 188) : Math.max(240, panelWidth - 300);
+    const sideTextWidth = narrow ? Math.max(88, panelWidth * 0.32) : Math.max(160, panelWidth * 0.26);
 
     this.topInfoGlow = this.add
-      .rectangle(centerX, panelCenterY, panelWidth + 10, panelHeight + 10, 0x000000, 0)
-      .setStrokeStyle(3, 0x85b5eb, 0.9);
+      .rectangle(centerX, panelCenterY, panelWidth + 8, panelHeight + 8, 0x000000, 0)
+      .setStrokeStyle(3, 0x85b5eb, 0.82);
 
     const panel = this.add
-      .rectangle(centerX, panelCenterY, panelWidth, panelHeight, 0xf3efe4, 0.94)
-      .setStrokeStyle(2, 0xb5a98f);
+      .rectangle(centerX, panelCenterY, panelWidth, panelHeight, THEME.night, 0.88)
+      .setStrokeStyle(2, THEME.gold, 0.82);
 
     this.deckCard = this.add
-      .rectangle(deckX, deckY, deckWidth, deckHeight, 0x2f3753)
-      .setStrokeStyle(2, 0xd7dff3);
-    const deckPatternWidth = narrow ? 32 : 46;
-    const deckPatternA = this.add.rectangle(deckX, deckY - (narrow ? 12 : 16), deckPatternWidth, 7, 0x4f6391, 0.95);
-    const deckPatternB = this.add.rectangle(deckX, deckY + (narrow ? 3 : 4), deckPatternWidth, 7, 0x4f6391, 0.95);
-    const deckPatternC = this.add.rectangle(deckX, deckY + (narrow ? 18 : 24), deckPatternWidth, 7, 0x4f6391, 0.95);
+      .rectangle(deckX, deckY, deckWidth, deckHeight, 0x283651, 0.98)
+      .setStrokeStyle(2, 0xd7dff3, 0.85);
+    const deckPatternWidth = narrow ? 22 : 30;
+    const deckPatternA = this.add.rectangle(deckX, deckY - (narrow ? 9 : 12), deckPatternWidth, 5, 0x6f86bc, 0.95);
+    const deckPatternB = this.add.rectangle(deckX, deckY + (narrow ? 2 : 3), deckPatternWidth, 5, 0x6f86bc, 0.95);
+    const deckPatternC = this.add.rectangle(deckX, deckY + (narrow ? 13 : 18), deckPatternWidth, 5, 0x6f86bc, 0.95);
 
     this.opponentNameText = this.add
-      .text(textLeft, topY + (narrow ? 14 : 20), 'Opponent: Player B (AI)', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '14px' : '22px',
-        color: '#223143',
+      .text(centerX - panelWidth / 2 + (narrow ? 54 : 76), panelCenterY - (narrow ? 17 : 19), 'Enemy tower 30 / wall 10', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '11px' : '15px',
+        color: '#dce8f7',
         fontStyle: 'bold',
-        wordWrap: textWrapWidth ? { width: textWrapWidth } : undefined,
+        wordWrap: { width: sideTextWidth },
       })
       .setOrigin(0, 0);
 
     this.opponentTowerText = this.add
-      .text(textLeft, topY + (narrow ? 44 : 54), 'Tower: 30', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '22px' : '30px',
-        color: '#293f67',
+      .text(centerX + panelWidth / 2 - (narrow ? 10 : 20), panelCenterY - (narrow ? 17 : 19), 'Goal 50', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '11px' : '15px',
+        color: '#f7dfb8',
         fontStyle: 'bold',
+        align: 'right',
+        wordWrap: { width: sideTextWidth },
       })
-      .setOrigin(0, 0);
+      .setOrigin(1, 0);
 
-    const indicatorY = topY + panelHeight - (narrow ? 16 : 20);
-    const indicatorRadius = narrow ? 9 : 11;
-    this.turnIndicatorPlayer = this.add.circle(centerX - (narrow ? 44 : 62), indicatorY, indicatorRadius, 0x3f63a8, 0.4).setStrokeStyle(2, 0xd8e5ff);
+    const indicatorY = panelCenterY + (narrow ? 17 : 20);
+    const indicatorRadius = narrow ? 6 : 8;
+    const indicatorStartX = deckX + (narrow ? 44 : 62);
+    this.turnIndicatorPlayer = this.add.circle(indicatorStartX, indicatorY, indicatorRadius, THEME.playerBlue, 0.4).setStrokeStyle(2, 0xd8e5ff);
     const turnIndicatorPlayerText = this.add
       .text(this.turnIndicatorPlayer.x, indicatorY, 'A', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '10px' : '12px',
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '7px' : '9px',
         color: '#f3f4ef',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
-    this.turnIndicatorAi = this.add.circle(centerX - (narrow ? 18 : 28), indicatorY, indicatorRadius, 0x9b514d, 0.4).setStrokeStyle(2, 0xf2d8d6);
+    this.turnIndicatorAi = this.add.circle(indicatorStartX + (narrow ? 18 : 24), indicatorY, indicatorRadius, THEME.enemyRed, 0.4).setStrokeStyle(2, 0xf2d8d6);
     const turnIndicatorAiText = this.add
       .text(this.turnIndicatorAi.x, indicatorY, 'B', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '10px' : '12px',
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '7px' : '9px',
         color: '#f3f4ef',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
     this.turnLabelText = this.add
-      .text(centerX, topY + panelHeight + (narrow ? 4 : 8), 'Your turn', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '18px' : '24px',
-        color: '#f3f0e8',
+      .text(centerX, panelCenterY - (narrow ? 21 : 24), 'Your turn', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '18px' : '26px',
+        color: '#fff1d2',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
 
     this.statusText = this.add
-      .text(centerX, topY + panelHeight + (narrow ? 28 : 38), '', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '12px' : '15px',
+      .text(centerX, panelCenterY + (narrow ? 7 : 10), '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '10px' : '13px',
         color: '#d9e2ef',
-        wordWrap: { width: Math.max(280, width - 32) },
+        align: 'center',
+        wordWrap: { width: Math.max(150, panelWidth * 0.48) },
       })
       .setOrigin(0.5, 0);
 
@@ -422,13 +446,13 @@ export class GameScene extends Phaser.Scene {
   private createSidePanels(width: number, height: number): void {
     const compact = this.isNarrowLayout(width);
     const sideMargin = compact ? 8 : Math.max(12, Math.floor(width * 0.014));
-    const panelWidth = compact ? Math.max(136, (width - sideMargin * 3) / 2) : Math.max(170, Math.min(300, (width - sideMargin * 3) / 2));
-    const reservedHandHeight = compact ? Math.max(156, Math.min(206, height * 0.26)) : 0;
-    const panelTop = compact ? Math.max(108, height * 0.15) : Math.max(122, height * 0.17);
+    const panelWidth = compact ? Math.max(136, (width - sideMargin * 3) / 2) : Math.max(184, Math.min(252, (width - sideMargin * 3) / 2));
+    const reservedHandHeight = compact ? Math.max(176, Math.min(224, height * 0.29)) : 0;
+    const panelTop = compact ? Math.max(94, height * 0.13) : Math.max(98, height * 0.12);
     const compactAvailableHeight = height - panelTop - reservedHandHeight - 18;
     const panelHeight = compact
-      ? Math.max(300, Math.min(360, compactAvailableHeight))
-      : Math.max(420, Math.min(560, height * 0.63));
+      ? Math.max(288, Math.min(340, compactAvailableHeight))
+      : Math.max(386, Math.min(480, height * 0.52));
 
     this.playerPanel = this.createPlayerPanel({
       side: 'left',
@@ -436,7 +460,7 @@ export class GameScene extends Phaser.Scene {
       y: panelTop,
       width: panelWidth,
       height: panelHeight,
-      headerColor: 0x3f63a8,
+      headerColor: THEME.playerBlue,
       borderColor: 0x9eb8e8,
       title: 'Player A',
       compact,
@@ -448,7 +472,7 @@ export class GameScene extends Phaser.Scene {
       y: panelTop,
       width: panelWidth,
       height: panelHeight,
-      headerColor: 0x9b514d,
+      headerColor: THEME.enemyRed,
       borderColor: 0xe3b8b5,
       title: 'Player B',
       compact,
@@ -470,12 +494,12 @@ export class GameScene extends Phaser.Scene {
     const headerY = config.compact ? 24 : 30;
     const headerHeight = config.compact ? 38 : 48;
     const resourceTopStart = config.compact ? 52 : 74;
-    const resourceGap = config.compact ? 56 : 94;
+    const resourceGap = config.compact ? 54 : 82;
 
     const container = this.add.container(config.x, config.y).setDepth(20);
 
-    const frame = this.add.rectangle(config.width / 2, config.height / 2, config.width, config.height, 0xf3efe4, 0.95);
-    frame.setStrokeStyle(2, 0xb6ab92);
+    const frame = this.add.rectangle(config.width / 2, config.height / 2, config.width, config.height, THEME.parchment, 0.94);
+    frame.setStrokeStyle(2, 0xb6ab92, 0.85);
 
     const activeGlow = this.add
       .rectangle(config.width / 2, config.height / 2, config.width + 8, config.height + 8, 0x000000, 0)
@@ -488,7 +512,7 @@ export class GameScene extends Phaser.Scene {
 
     const headerText = this.add
       .text(config.width / 2, headerY, config.title, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '16px' : '24px',
         color: '#f5f1e7',
         fontStyle: 'bold',
@@ -516,8 +540,8 @@ export class GameScene extends Phaser.Scene {
       container.add(block.root);
     });
 
-    const towerTop = config.height - (config.compact ? 78 : 138);
-    const towerBlockHeight = config.compact ? 70 : 118;
+    const towerTop = config.height - (config.compact ? 78 : 112);
+    const towerBlockHeight = config.compact ? 70 : 94;
     const towerBlock = this.add
       .rectangle(config.width / 2, towerTop + towerBlockHeight / 2, config.width - 24, towerBlockHeight, 0xe9e3d4, 0.95)
       .setStrokeStyle(2, 0xb8ac92);
@@ -525,7 +549,7 @@ export class GameScene extends Phaser.Scene {
     const towerLabelX = isRight ? config.width - 24 : 24;
     const towerLabel = this.add
       .text(towerLabelX, towerTop + (config.compact ? 8 : 12), 'Tower', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '12px' : '18px',
         color: '#243446',
         fontStyle: 'bold',
@@ -534,7 +558,7 @@ export class GameScene extends Phaser.Scene {
 
     const wallLabel = this.add
       .text(towerLabelX, towerTop + (config.compact ? 38 : 58), 'Wall', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '12px' : '18px',
         color: '#243446',
         fontStyle: 'bold',
@@ -544,7 +568,7 @@ export class GameScene extends Phaser.Scene {
     const castleBadge = this.add.circle(config.width / 2, towerTop + towerBlockHeight / 2, config.compact ? 16 : 24, 0x5a6f8a, 0.95).setStrokeStyle(2, 0xd6d9e0);
     const castleText = this.add
       .text(castleBadge.x, castleBadge.y, 'CAS', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '8px' : '11px',
         color: '#f2f5f8',
         fontStyle: 'bold',
@@ -554,7 +578,7 @@ export class GameScene extends Phaser.Scene {
     const valueOffset = config.compact ? 42 : 88;
     const towerValue = this.add
       .text(isRight ? valueOffset : config.width - valueOffset, towerTop + (config.compact ? 4 : 8), '30', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '24px' : '34px',
         color: '#22374e',
         fontStyle: 'bold',
@@ -563,7 +587,7 @@ export class GameScene extends Phaser.Scene {
 
     const wallValue = this.add
       .text(isRight ? valueOffset : config.width - valueOffset, towerTop + (config.compact ? 34 : 54), '10', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '24px' : '34px',
         color: '#22374e',
         fontStyle: 'bold',
@@ -581,6 +605,7 @@ export class GameScene extends Phaser.Scene {
     return {
       side: config.side,
       width: config.width,
+      height: config.height,
       container,
       activeGlow,
       headerText,
@@ -600,52 +625,51 @@ export class GameScene extends Phaser.Scene {
     color: number;
     compact: boolean;
   }): ResourceBlockRefs {
-    const isRight = config.side === 'right';
     const root = this.add.container(0, 0);
 
     const width = config.panelWidth - 24;
     const left = 12;
-    const blockHeight = config.compact ? 50 : 82;
+    const blockHeight = config.compact ? 48 : 72;
     const bg = this.add
       .rectangle(left + width / 2, config.top + blockHeight / 2, width, blockHeight, config.color, 0.9)
       .setStrokeStyle(2, 0xe5d9c1);
 
-    const iconX = isRight ? left + width - (config.compact ? 16 : 24) : left + (config.compact ? 16 : 24);
+    const iconX = left + (config.compact ? 16 : 24);
     const iconBadge = this.add.circle(iconX, config.top + (config.compact ? 16 : 24), config.compact ? 11 : 17, 0x253546, 0.95).setStrokeStyle(2, 0xe4d8bd);
     const iconText = this.add
       .text(iconX, iconBadge.y, config.iconLabel, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '7px' : '10px',
         color: '#f4f0e5',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
-    const labelX = isRight ? left + width - (config.compact ? 34 : 50) : left + (config.compact ? 34 : 50);
-    const generatorValueX = isRight ? left + (config.compact ? 16 : 24) : left + width - (config.compact ? 16 : 24);
+    const labelX = left + (config.compact ? 34 : 50);
+    const generatorValueX = left + width - (config.compact ? 18 : 28);
 
     const labelText = this.add
       .text(labelX, config.top + (config.compact ? 5 : 8), config.label, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '11px' : '16px',
         color: '#f5f2ea',
         fontStyle: 'bold',
-        wordWrap: { width: Math.max(42, width - (config.compact ? 70 : 92)) },
+        wordWrap: { width: Math.max(42, width - (config.compact ? 92 : 132)) },
       })
-      .setOrigin(isRight ? 1 : 0, 0);
+      .setOrigin(0, 0);
 
     const resourceNameText = this.add
-      .text(labelX, config.top + (config.compact ? 20 : 31), config.resourceName, {
-        fontFamily: 'Georgia',
+      .text(labelX, config.top + (config.compact ? 20 : 30), config.resourceName, {
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '10px' : '14px',
         color: '#f1e8d8',
-        wordWrap: { width: Math.max(42, width - (config.compact ? 70 : 92)) },
+        wordWrap: { width: Math.max(42, width - (config.compact ? 92 : 132)) },
       })
-      .setOrigin(isRight ? 1 : 0, 0);
+      .setOrigin(0, 0);
 
     const generatorValue = this.add
       .text(generatorValueX, config.top + (config.compact ? 2 : 5), '2', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '20px' : '28px',
         color: '#f9f5eb',
         fontStyle: 'bold',
@@ -653,8 +677,8 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     const resourceValue = this.add
-      .text(generatorValueX, config.top + (config.compact ? 26 : 41), '5', {
-        fontFamily: 'Georgia',
+      .text(generatorValueX, config.top + (config.compact ? 25 : 39), '5', {
+        fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '16px' : '21px',
         color: '#f7f2e6',
         fontStyle: 'bold',
@@ -674,18 +698,29 @@ export class GameScene extends Phaser.Scene {
     this.towerContainer = this.add.container(0, 0).setDepth(10);
 
     const narrow = this.isNarrowLayout(width);
-    const centerY = narrow ? height * 0.54 : height * 0.52;
-    const spacing = narrow ? Math.max(72, Math.min(116, width * 0.24)) : Math.max(150, Math.min(220, width * 0.17));
-    const towerScale = narrow ? Math.max(0.5, Math.min(0.68, width / 520)) : 1;
+    const centerY = narrow ? height * 0.55 : height * 0.61;
+    const spacing = narrow ? Math.max(78, Math.min(124, width * 0.25)) : Math.max(210, Math.min(310, width * 0.14));
+    const towerScale = narrow ? Math.max(0.52, Math.min(0.72, width / 500)) : Math.max(1.04, Math.min(1.22, width / 1700));
+
+    const stage = this.add.graphics();
+    stage.fillStyle(0x08131d, 0.58);
+    stage.fillEllipse(width / 2, centerY + 30 * towerScale, spacing * 2 + 280 * towerScale, 120 * towerScale);
+    stage.fillStyle(0x153126, 0.54);
+    stage.fillEllipse(width / 2, centerY + 52 * towerScale, spacing * 2 + 360 * towerScale, 86 * towerScale);
+    stage.lineStyle(4, THEME.gold, 0.28);
+    stage.lineBetween(width / 2 - spacing + 88 * towerScale, centerY - 86 * towerScale, width / 2 + spacing - 88 * towerScale, centerY - 86 * towerScale);
+    stage.lineStyle(2, 0xb8c9e6, 0.18);
+    stage.lineBetween(width / 2 - spacing + 74 * towerScale, centerY - 42 * towerScale, width / 2 + spacing - 74 * towerScale, centerY - 42 * towerScale);
+    this.towerContainer.add(stage);
 
     this.playerTowerVisual = this.createTowerVisual(width / 2 - spacing, centerY, 0x5e7ea9, 'Player A', towerScale);
     this.aiTowerVisual = this.createTowerVisual(width / 2 + spacing, centerY, 0x9f615a, 'Player B', towerScale);
 
     const versusText = this.add
-      .text(width / 2, centerY + 150 * towerScale, 'VS', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '22px' : '32px',
-        color: '#d8e0f0',
+      .text(width / 2, centerY - 92 * towerScale, 'VS', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '20px' : '34px',
+        color: '#fff1d2',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
@@ -696,6 +731,11 @@ export class GameScene extends Phaser.Scene {
   private createTowerVisual(x: number, y: number, baseColor: number, label: string, scale = 1): TowerVisualRefs {
     const container = this.add.container(x, y).setScale(scale);
 
+    const dangerGlow = this.add.ellipse(0, -124, 220, 296, 0xff6f5f, 0).setVisible(false);
+    const shadow = this.add.ellipse(0, 14, 170, 42, 0x040a12, 0.36);
+    const wallShield = this.add
+      .rectangle(0, -50, 184, 46, 0x94c7e3, 0.16)
+      .setStrokeStyle(3, 0xbde6ff, 0.72);
     const body = this.add
       .rectangle(0, 0, 132, 242, baseColor, 0.95)
       .setStrokeStyle(3, 0xe0d5c2)
@@ -706,10 +746,34 @@ export class GameScene extends Phaser.Scene {
     const glow = this.add.ellipse(0, -118, 170, 260, 0x7de0b4, 0.18).setVisible(false);
     const flash = this.add.rectangle(0, -121, 128, 238, 0xee6a6a, 0).setOrigin(0.5, 0);
 
+    const progressBack = this.add
+      .rectangle(92, -12, 12, 214, 0x152132, 0.88)
+      .setStrokeStyle(1, 0xd7c9ad, 0.65)
+      .setOrigin(0.5, 1);
+    const progressFill = this.add.rectangle(92, -12, 12, 120, THEME.gold, 0.92).setOrigin(0.5, 1);
+
+    const towerValueText = this.add
+      .text(0, -286, 'Tower 30', {
+        fontFamily: FONT_FAMILY,
+        fontSize: '18px',
+        color: '#fff2d4',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
+    const wallValueText = this.add
+      .text(0, -58, 'Wall 10', {
+        fontFamily: FONT_FAMILY,
+        fontSize: '15px',
+        color: '#dff2ff',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+
     const labelText = this.add
       .text(0, 16, label, {
-        fontFamily: 'Georgia',
-        fontSize: '18px',
+        fontFamily: FONT_FAMILY,
+        fontSize: '20px',
         color: '#f0ecdf',
         fontStyle: 'bold',
       })
@@ -723,7 +787,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    container.add([glow, body, roof, ...windows, flash, labelText]);
+    container.add([dangerGlow, shadow, glow, wallShield, body, roof, progressBack, progressFill, ...windows, flash, towerValueText, wallValueText, labelText]);
     this.towerContainer.add(container);
 
     return {
@@ -731,6 +795,11 @@ export class GameScene extends Phaser.Scene {
       windows,
       flash,
       glow,
+      dangerGlow,
+      wallShield,
+      wallValueText,
+      towerValueText,
+      progressFill,
     };
   }
 
@@ -738,35 +807,46 @@ export class GameScene extends Phaser.Scene {
     this.handContainer = this.add.container(0, 0).setDepth(30);
 
     const narrow = this.isNarrowLayout(width);
-    const panelHeight = narrow ? Math.max(156, Math.min(206, height * 0.26)) : Math.max(178, Math.min(228, height * 0.27));
-    const panelTop = height - panelHeight - 12;
+    const panelHeight = narrow ? Math.max(176, Math.min(224, height * 0.29)) : Math.max(238, Math.min(286, height * 0.28));
+    const panelTop = height - panelHeight - 10;
 
     this.handSurface = this.add
-      .rectangle(width / 2, panelTop + panelHeight / 2, width - 24, panelHeight, 0xf1ece0, 0.95)
-      .setStrokeStyle(2, 0xb9ad93);
+      .rectangle(width / 2, panelTop + panelHeight / 2, width - 20, panelHeight, 0x211a14, 0.93)
+      .setStrokeStyle(2, THEME.gold, 0.65);
 
     this.handPreviewText = this.add
       .text(26, panelTop + 12, 'Card preview\nTap or hover a card to inspect details.', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '13px' : '18px',
-        color: '#243344',
-        lineSpacing: narrow ? 2 : 6,
-        wordWrap: { width: narrow ? Math.max(138, width * 0.5) : 420 },
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '12px' : '17px',
+        color: '#f6ead7',
+        lineSpacing: narrow ? 2 : 5,
+        wordWrap: { width: narrow ? Math.max(142, width * 0.48) : Math.min(420, width * 0.26) },
       })
       .setOrigin(0, 0);
 
+    this.battleFeedText = this.add
+      .text(width / 2, panelTop + 12, 'Battle feed will appear here.', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '10px' : '14px',
+        color: '#ffdca8',
+        align: 'center',
+        lineSpacing: narrow ? 1 : 3,
+        wordWrap: { width: narrow ? Math.max(120, width * 0.38) : Math.min(560, width * 0.34) },
+      })
+      .setOrigin(0.5, 0);
+
     this.handHintText = this.add
-      .text(width - 24, panelTop + 12, narrow ? 'Tap: inspect\nSwipe up/down' : 'Desktop: click play, right-click discard\nMobile: tap select, swipe up play, swipe down discard', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '11px' : '14px',
-        color: '#4d5e73',
+      .text(width - 26, panelTop + (narrow ? panelHeight - 36 : 16), narrow ? 'Play: swipe up\nDiscard: down' : 'Click card to play | right-click discard', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '10px' : '13px',
+        color: '#c7d2e6',
         align: 'right',
       })
       .setOrigin(1, 0);
 
-    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 48 : 76));
+    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 54 : 88));
 
-    this.handContainer.add([this.handSurface, this.handPreviewText, this.handHintText, this.handCardsContainer]);
+    this.handContainer.add([this.handSurface, this.handPreviewText, this.battleFeedText, this.handHintText, this.handCardsContainer]);
   }
 
   private createOverlayLayer(): void {
@@ -778,7 +858,7 @@ export class GameScene extends Phaser.Scene {
 
     this.endOverlayText = this.add
       .text(width / 2, height / 2 - 92, '', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: '46px',
         color: '#f2efe8',
         fontStyle: 'bold',
@@ -906,17 +986,29 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    if (action.type === 'play_card' && playedCardOrigin) {
-      this.animateCardPlay(action.cardId, playedCardOrigin);
+    if (action.type === 'play_card') {
+      const origin = playedCardOrigin ?? this.getActionOrigin(action);
+      const target = this.getActionTarget(action, previous, next);
+      this.animateCardPlay(action.cardId, origin, target);
     }
   }
 
   private getPanelAnchor(playerId: PlayerId, level: number): Point {
     const panel = playerId === 'player' ? this.playerPanel : this.aiPanel;
     const compact = this.isNarrowLayout();
+    if (level === 0) {
+      return {
+        x: panel.container.x + panel.width / 2,
+        y: panel.container.y + panel.height - (compact ? 44 : 58),
+      };
+    }
+
+    const resourceTopStart = compact ? 52 : 74;
+    const resourceGap = compact ? 54 : 82;
+    const blockHeight = compact ? 48 : 72;
     return {
-      x: panel.container.x + panel.width / 2,
-      y: panel.container.y + (compact ? 68 + level * 48 : 106 + level * 72),
+      x: compact ? panel.container.x + panel.width - 22 : panel.container.x + (playerId === 'player' ? panel.width + 34 : -34),
+      y: panel.container.y + resourceTopStart + (level - 1) * resourceGap + blockHeight / 2,
     };
   }
 
@@ -925,6 +1017,58 @@ export class GameScene extends Phaser.Scene {
     const world = new Phaser.Math.Vector2();
     tower.container.getWorldTransformMatrix().transformPoint(0, -150, world);
     return { x: world.x, y: world.y };
+  }
+
+  private getActionOrigin(action: Extract<Action, { type: 'play_card' }>): Point {
+    if (action.playerId === 'ai') {
+      return {
+        x: this.scale.width / 2,
+        y: this.isNarrowLayout() ? this.scale.height * 0.36 : this.scale.height * 0.4,
+      };
+    }
+
+    return this.getPanelAnchor('player', 3);
+  }
+
+  private getActionTarget(action: Extract<Action, { type: 'play_card' }>, previous: GameState, next: GameState): Point {
+    const actor = action.playerId;
+    const opponent = actor === 'player' ? 'ai' : 'player';
+    const opponentBefore = previous.players[opponent];
+    const opponentAfter = next.players[opponent];
+    const actorBefore = previous.players[actor];
+    const actorAfter = next.players[actor];
+
+    if (opponentAfter.tower !== opponentBefore.tower || opponentAfter.wall !== opponentBefore.wall) {
+      return this.getTowerAnchor(opponent);
+    }
+
+    if (actorAfter.tower !== actorBefore.tower || actorAfter.wall !== actorBefore.wall) {
+      return this.getTowerAnchor(actor);
+    }
+
+    const resources: Resource[] = ['bricks', 'weapons', 'crystals'];
+    const changedOpponentResourceIndex = resources.findIndex((resource) => opponentAfter[resource] !== opponentBefore[resource]);
+    if (changedOpponentResourceIndex >= 0) {
+      return this.getPanelAnchor(opponent, changedOpponentResourceIndex + 1);
+    }
+
+    const generatorKeys = ['quarry', 'barracks', 'magic'] as const;
+    const changedOpponentGeneratorIndex = generatorKeys.findIndex((generator) => opponentAfter[generator] !== opponentBefore[generator]);
+    if (changedOpponentGeneratorIndex >= 0) {
+      return this.getPanelAnchor(opponent, changedOpponentGeneratorIndex + 1);
+    }
+
+    const changedResourceIndex = resources.findIndex((resource) => actorAfter[resource] !== actorBefore[resource]);
+    if (changedResourceIndex >= 0) {
+      return this.getPanelAnchor(actor, changedResourceIndex + 1);
+    }
+
+    const changedGeneratorIndex = generatorKeys.findIndex((generator) => actorAfter[generator] !== actorBefore[generator]);
+    if (changedGeneratorIndex >= 0) {
+      return this.getPanelAnchor(actor, changedGeneratorIndex + 1);
+    }
+
+    return this.getTowerAnchor(actor);
   }
 
   private animateDeckDraw(): void {
@@ -946,40 +1090,102 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private animateCardPlay(cardId: string, origin: Point): void {
+  private animateCardPlay(cardId: string, origin: Point, target: Point): void {
     const card = CARD_BY_ID[cardId];
     if (!card) {
       return;
     }
 
+    const color = cardTypeColor(card.domain);
+    const beam = this.add.graphics();
+    beam.lineStyle(4, color, 0.34);
+    beam.lineBetween(origin.x, origin.y, target.x, target.y);
+    beam.setAlpha(this.animationsEnabled ? 0 : 0.34);
+
+    const clone = this.add.container(origin.x, origin.y);
+    const cloneShadow = this.add.rectangle(5, 7, 166, 88, 0x03070d, 0.35);
     const cloneBody = this.add
-      .rectangle(origin.x, origin.y, 144, 78, cardTypeColor(card.domain), 0.96)
-      .setStrokeStyle(2, 0xf4e7cf);
+      .rectangle(0, 0, 166, 88, color, 0.96)
+      .setStrokeStyle(3, THEME.gold, 0.88);
     const cloneText = this.add
-      .text(origin.x, origin.y, card.name, {
-        fontFamily: 'Georgia',
-        fontSize: '16px',
+      .text(0, -8, card.name, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '18px',
         color: '#f4f0e8',
         fontStyle: 'bold',
         align: 'center',
+        wordWrap: { width: 138 },
+      })
+      .setOrigin(0.5);
+    const cloneEffect = this.add
+      .text(0, 22, card.text, {
+        fontFamily: FONT_FAMILY,
+        fontSize: '12px',
+        color: '#ffe8c6',
+        align: 'center',
+        wordWrap: { width: 142 },
       })
       .setOrigin(0.5);
 
-    this.overlayContainer.add([cloneBody, cloneText]);
+    clone.add([cloneShadow, cloneBody, cloneText, cloneEffect]);
+    clone.setScale(this.animationsEnabled ? 0.8 : 1);
+    this.overlayContainer.add([beam, clone]);
+
+    if (!this.animationsEnabled) {
+      clone.destroy(true);
+      beam.destroy();
+      this.spawnImpactBurst(target, color);
+      return;
+    }
 
     this.tweens.add({
-      targets: [cloneBody, cloneText],
-      x: this.scale.width / 2,
-      y: this.scale.height * 0.49,
-      alpha: 0,
+      targets: beam,
+      alpha: 0.34,
+      duration: animDuration(120),
+      yoyo: true,
+      hold: animDelay(220),
+      ease: 'Sine.InOut',
+      onComplete: () => beam.destroy(),
+    });
+
+    this.tweens.add({
+      targets: clone,
+      x: target.x,
+      y: target.y,
       scaleX: 0.72,
       scaleY: 0.72,
-      duration: animDuration(340),
+      duration: animDuration(520),
       ease: 'Sine.InOut',
       onComplete: () => {
-        cloneBody.destroy();
-        cloneText.destroy();
+        clone.destroy(true);
+        this.spawnImpactBurst(target, color);
       },
+    });
+  }
+
+  private spawnImpactBurst(target: Point, color: number): void {
+    const ring = this.add.circle(target.x, target.y, 14, color, 0).setStrokeStyle(4, THEME.gold, 0.82);
+    const core = this.add.circle(target.x, target.y, 8, color, 0.55);
+    this.overlayContainer.add([ring, core]);
+
+    this.tweens.add({
+      targets: ring,
+      scaleX: 2.6,
+      scaleY: 2.6,
+      alpha: 0,
+      duration: animDuration(420),
+      ease: 'Sine.Out',
+      onComplete: () => ring.destroy(),
+    });
+
+    this.tweens.add({
+      targets: core,
+      scaleX: 0.2,
+      scaleY: 0.2,
+      alpha: 0,
+      duration: animDuration(280),
+      ease: 'Sine.In',
+      onComplete: () => core.destroy(),
     });
   }
 
@@ -1005,7 +1211,7 @@ export class GameScene extends Phaser.Scene {
     const header = this.add.rectangle(0, -height / 2 + 22, width - 18, 34, 0x121c2b, 0.78);
     const label = this.add
       .text(0, -height / 2 + 8, 'Opponent plays', {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: narrow ? '14px' : '16px',
         color: '#ffe9c8',
         fontStyle: 'bold',
@@ -1013,7 +1219,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     const title = this.add
       .text(0, -height / 2 + 48, card.name, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: narrow ? '24px' : '30px',
         color: '#fff8e8',
         fontStyle: 'bold',
@@ -1023,7 +1229,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     const cost = this.add
       .text(0, title.y + (narrow ? 34 : 42), `${card.domain.toUpperCase()} ${card.cost}`, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: narrow ? '13px' : '15px',
         color: '#fbe0b6',
         fontStyle: 'bold',
@@ -1031,7 +1237,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     const text = this.add
       .text(0, height / 2 - (narrow ? 48 : 54), card.text, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: narrow ? '13px' : '15px',
         color: '#fff3dd',
         align: 'center',
@@ -1046,7 +1252,7 @@ export class GameScene extends Phaser.Scene {
     this.overlayContainer.add(reveal);
     this.enemyCardRevealContainer = reveal;
 
-    this.turnLabelText.setText('Opponent plays a card');
+    this.turnLabelText.setText('Opponent plays');
     this.statusText.setText(`AI reveals ${card.name}. Effects resolve shortly.`);
 
     if (this.animationsEnabled) {
@@ -1140,7 +1346,7 @@ export class GameScene extends Phaser.Scene {
   ): void {
     const floating = this.add
       .text(anchor.x, anchor.y, text, {
-        fontFamily: 'Georgia',
+        fontFamily: FONT_FAMILY,
         fontSize: '19px',
         color,
         fontStyle: 'bold',
@@ -1351,33 +1557,44 @@ export class GameScene extends Phaser.Scene {
     const player = this.state.players.player;
     const ai = this.state.players.ai;
 
-    this.opponentNameText.setText('Opponent: Player B (AI)');
-    this.opponentTowerText.setText(`Tower: ${ai.tower}`);
+    this.opponentNameText.setText(`Enemy T${ai.tower} / W${ai.wall}`);
+    this.opponentTowerText.setText(`Goal ${this.state.winTower} | Deck ${player.deck.length}`);
 
     const turnLabel =
       this.state.phase === 'ended' ? 'Match Over' : this.state.turn.current === 'player' ? 'Your turn' : 'Opponent turn';
     this.turnLabelText.setText(turnLabel);
 
-    const lastLogs = this.state.log.slice(-2);
-    this.statusText.setText(lastLogs.join('  |  '));
+    const lastLogs = this.state.log.slice(-3);
+    const currentInstruction =
+      this.state.phase === 'ended'
+        ? this.state.winner === 'player'
+          ? 'Victory secured.'
+          : 'Defeat. The tower fell.'
+        : this.state.turn.current === 'player'
+          ? 'Choose one card: play it, or discard to cycle.'
+          : this.aiPendingAction
+            ? 'Opponent card revealed. Effects resolve next.'
+            : 'Opponent is choosing a response.';
+    this.statusText.setText(currentInstruction);
+    this.battleFeedText.setText(lastLogs.length > 0 ? lastLogs.map((entry) => `- ${entry}`).join('\n') : 'No battle events yet.');
 
     this.playerPanel.headerText.setText('Player A');
     this.aiPanel.headerText.setText('Player B');
 
-    this.playerPanel.resourceBlocks.bricks.generatorValue.setText(String(player.quarry));
+    this.playerPanel.resourceBlocks.bricks.generatorValue.setText(`+${player.quarry}`);
     this.playerPanel.resourceBlocks.bricks.resourceValue.setText(String(player.bricks));
-    this.playerPanel.resourceBlocks.weapons.generatorValue.setText(String(player.barracks));
+    this.playerPanel.resourceBlocks.weapons.generatorValue.setText(`+${player.barracks}`);
     this.playerPanel.resourceBlocks.weapons.resourceValue.setText(String(player.weapons));
-    this.playerPanel.resourceBlocks.crystals.generatorValue.setText(String(player.magic));
+    this.playerPanel.resourceBlocks.crystals.generatorValue.setText(`+${player.magic}`);
     this.playerPanel.resourceBlocks.crystals.resourceValue.setText(String(player.crystals));
     this.playerPanel.towerValue.setText(String(player.tower));
     this.playerPanel.wallValue.setText(String(player.wall));
 
-    this.aiPanel.resourceBlocks.bricks.generatorValue.setText(String(ai.quarry));
+    this.aiPanel.resourceBlocks.bricks.generatorValue.setText(`+${ai.quarry}`);
     this.aiPanel.resourceBlocks.bricks.resourceValue.setText(String(ai.bricks));
-    this.aiPanel.resourceBlocks.weapons.generatorValue.setText(String(ai.barracks));
+    this.aiPanel.resourceBlocks.weapons.generatorValue.setText(`+${ai.barracks}`);
     this.aiPanel.resourceBlocks.weapons.resourceValue.setText(String(ai.weapons));
-    this.aiPanel.resourceBlocks.crystals.generatorValue.setText(String(ai.magic));
+    this.aiPanel.resourceBlocks.crystals.generatorValue.setText(`+${ai.magic}`);
     this.aiPanel.resourceBlocks.crystals.resourceValue.setText(String(ai.crystals));
     this.aiPanel.towerValue.setText(String(ai.tower));
     this.aiPanel.wallValue.setText(String(ai.wall));
@@ -1386,24 +1603,26 @@ export class GameScene extends Phaser.Scene {
     const aiTurn = this.state.phase === 'playing' && this.state.turn.current === 'ai';
     this.playerPanel.activeGlow.setVisible(playerTurn);
     this.aiPanel.activeGlow.setVisible(aiTurn);
-    this.turnIndicatorPlayer.setFillStyle(0x3f63a8, playerTurn ? 1 : 0.35);
+    this.turnIndicatorPlayer.setFillStyle(THEME.playerBlue, playerTurn ? 1 : 0.35);
     this.turnIndicatorPlayer.setScale(playerTurn ? 1.12 : 1);
-    this.turnIndicatorAi.setFillStyle(0x9b514d, aiTurn ? 1 : 0.35);
+    this.turnIndicatorAi.setFillStyle(THEME.enemyRed, aiTurn ? 1 : 0.35);
     this.turnIndicatorAi.setScale(aiTurn ? 1.12 : 1);
     this.topInfoGlow.setStrokeStyle(3, playerTurn ? 0x89b5ff : aiTurn ? 0xf3a59f : 0x85b5eb, 0.9);
 
     this.updateTowerWindows(this.playerTowerVisual, player.tower, this.state.winTower);
     this.updateTowerWindows(this.aiTowerVisual, ai.tower, this.state.winTower);
+    this.updateTowerPressure(this.playerTowerVisual, player.tower, player.wall, this.state.winTower);
+    this.updateTowerPressure(this.aiTowerVisual, ai.tower, ai.wall, this.state.winTower);
 
     const narrow = this.isNarrowLayout();
     this.handHintText.setText(
       this.state.turn.current === 'player'
         ? narrow
-          ? 'Tap: inspect\nSwipe up/down'
-          : 'Desktop: click play, right-click discard\nMobile: tap select, swipe up play, swipe down discard'
+          ? 'Play: swipe up\nDiscard: down'
+          : 'Click card to play | right-click discard'
         : narrow
-          ? 'AI turn...\nWatch log'
-          : 'AI is resolving turn...\nWatch effects in the center overlay',
+          ? 'Opponent turn'
+          : 'Opponent turn: watch the center stage',
     );
 
     this.rebuildHand();
@@ -1423,7 +1642,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateTowerWindows(tower: TowerVisualRefs, towerValue: number, winTower: number): void {
-    const litCount = Math.round((towerValue / winTower) * tower.windows.length);
+    const litCount = Phaser.Math.Clamp(Math.round((towerValue / winTower) * tower.windows.length), 0, tower.windows.length);
 
     tower.windows.forEach((windowRect, index) => {
       if (index < litCount) {
@@ -1434,6 +1653,22 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private updateTowerPressure(tower: TowerVisualRefs, towerValue: number, wallValue: number, winTower: number): void {
+    const towerRatio = Phaser.Math.Clamp(towerValue / winTower, 0, 1);
+    const wallRatio = Phaser.Math.Clamp(wallValue / 30, 0, 1);
+    const danger = towerValue <= Math.ceil(winTower * 0.35);
+
+    tower.towerValueText.setText(`Tower ${towerValue}/${winTower}`);
+    tower.wallValueText.setText(wallValue > 0 ? `Wall ${wallValue}` : 'Wall down');
+    tower.progressFill.displayHeight = Math.max(8, 214 * towerRatio);
+    tower.progressFill.setFillStyle(towerRatio >= 0.78 ? 0x94f0a6 : danger ? 0xff8a70 : THEME.gold, 0.92);
+    tower.wallShield.setAlpha(wallValue > 0 ? 0.18 + wallRatio * 0.36 : 0.04);
+    tower.wallShield.setScale(1 + wallRatio * 0.18, 1 + wallRatio * 0.08);
+    tower.wallValueText.setColor(wallValue > 0 ? '#dff2ff' : '#ffb7a8');
+    tower.dangerGlow.setVisible(danger);
+    tower.dangerGlow.setAlpha(danger ? 0.18 : 0);
+  }
+
   private rebuildHand(): void {
     this.cardVisuals.forEach((entry) => entry.container.destroy());
     this.cardVisuals = [];
@@ -1442,13 +1677,13 @@ export class GameScene extends Phaser.Scene {
     const hand = this.state.players.player.hand;
     const panelWidth = this.handSurface.width;
     const maxWidth = panelWidth - 42;
-    const targetCardWidth = narrow ? 46 : 70;
-    const gap = hand.length > 1 ? Math.min(narrow ? 6 : 10, Math.max(3, (maxWidth - hand.length * targetCardWidth) / (hand.length - 1))) : 0;
+    const targetCardWidth = narrow ? 68 : 168;
+    const gap = hand.length > 1 ? Math.min(narrow ? 7 : 16, Math.max(4, (maxWidth - hand.length * targetCardWidth) / (hand.length - 1))) : 0;
     const count = Math.max(1, hand.length);
-    const cardWidth = Math.min(180, Math.max(narrow ? 40 : 54, (maxWidth - gap * (count - 1)) / count));
-    const compact = cardWidth < 112;
-    const ultraCompact = cardWidth < 64;
-    const cardHeight = ultraCompact ? 82 : compact ? 98 : 106;
+    const cardWidth = Math.min(narrow ? 88 : 214, Math.max(narrow ? 54 : 126, (maxWidth - gap * (count - 1)) / count));
+    const compact = cardWidth < 136;
+    const ultraCompact = cardWidth < 74;
+    const cardHeight = ultraCompact ? 92 : compact ? 118 : 138;
 
     const rowWidth = count * cardWidth + (count - 1) * gap;
     const startX = this.scale.width / 2 - rowWidth / 2 + cardWidth / 2;
@@ -1464,16 +1699,21 @@ export class GameScene extends Phaser.Scene {
       const affordable = canAffordCard(this.state, 'player', cardId);
       const cardPadding = ultraCompact ? 4 : 10;
       const titleWrapWidth = ultraCompact ? cardWidth - cardPadding * 2 : Math.max(42, cardWidth - 58);
+      const isSelected = this.selectedCardId === cardId;
 
       const container = this.add.container(x, y);
+      container.setY(isSelected ? -16 : 0);
+      container.setScale(isSelected ? 1.06 : 1);
+      const shadow = this.add.rectangle(4, 7, cardWidth, cardHeight, 0x04070d, 0.36);
       const body = this.add
-        .rectangle(0, 0, cardWidth, cardHeight, cardTypeColor(card.domain), affordable ? 0.97 : 0.4)
-        .setStrokeStyle(this.selectedCardId === cardId ? 4 : 2, this.selectedCardId === cardId ? 0xfff3dd : 0xf1dbc2);
+        .rectangle(0, 0, cardWidth, cardHeight, cardTypeColor(card.domain), affordable ? 0.98 : 0.46)
+        .setStrokeStyle(isSelected ? 4 : 2, isSelected ? THEME.gold : 0xf1dbc2);
+      const headerBand = this.add.rectangle(0, -cardHeight / 2 + (ultraCompact ? 13 : 18), cardWidth - 10, ultraCompact ? 22 : 32, 0x101a28, affordable ? 0.54 : 0.38);
 
       const title = this.add
         .text(-cardWidth / 2 + cardPadding, -cardHeight / 2 + (ultraCompact ? 5 : 8), card.name, {
-          fontFamily: 'Georgia',
-          fontSize: ultraCompact ? '9px' : compact ? '13px' : '17px',
+          fontFamily: FONT_FAMILY,
+          fontSize: ultraCompact ? '9px' : compact ? '15px' : '20px',
           color: '#f8f5ec',
           fontStyle: 'bold',
           wordWrap: { width: titleWrapWidth },
@@ -1491,17 +1731,17 @@ export class GameScene extends Phaser.Scene {
         .setStrokeStyle(2, 0xf0e3c7);
       const costText = this.add
         .text(costBadge.x, costBadge.y, String(card.cost), {
-          fontFamily: 'Georgia',
-          fontSize: ultraCompact ? '8px' : compact ? '12px' : '15px',
+          fontFamily: FONT_FAMILY,
+          fontSize: ultraCompact ? '8px' : compact ? '12px' : '16px',
           color: '#f9f4e7',
           fontStyle: 'bold',
         })
         .setOrigin(0.5);
 
       const effect = this.add
-        .text(-cardWidth / 2 + cardPadding, ultraCompact ? -4 : -2, ultraCompact ? '' : card.text, {
-          fontFamily: 'Georgia',
-          fontSize: compact ? '11px' : '13px',
+        .text(-cardWidth / 2 + cardPadding, ultraCompact ? -4 : compact ? -8 : -4, ultraCompact ? '' : card.text, {
+          fontFamily: FONT_FAMILY,
+          fontSize: compact ? '12px' : '15px',
           color: '#f4f1e9',
           wordWrap: { width: Math.max(30, cardWidth - cardPadding * 2) },
         })
@@ -1509,7 +1749,7 @@ export class GameScene extends Phaser.Scene {
 
       const stateText = this.add
         .text(-cardWidth / 2 + cardPadding, cardHeight / 2 - (ultraCompact ? 18 : 24), ultraCompact ? (affordable ? 'Play' : 'Need') : affordable ? 'Playable' : 'Not affordable', {
-          fontFamily: 'Georgia',
+          fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '8px' : compact ? '10px' : '12px',
           color: affordable ? '#dcffdc' : '#f2d4d4',
           fontStyle: 'bold',
@@ -1522,11 +1762,17 @@ export class GameScene extends Phaser.Scene {
         this.updateCardPreview(cardId);
         this.refreshCardSelection();
       });
+      hit.on('pointerout', () => {
+        if (this.isTouchPointer(this.input.activePointer)) {
+          return;
+        }
+        this.refreshCardSelection();
+      });
       hit.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         this.onCardPointerDown(cardId, pointer);
       });
 
-      container.add([body, title, costBadge, costText, effect, stateText, hit]);
+      container.add([shadow, body, headerBand, title, costBadge, costText, effect, stateText, hit]);
       this.handCardsContainer.add(container);
 
       if (this.animationsEnabled) {
@@ -1534,7 +1780,7 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({
           targets: container,
           alpha: 1,
-          y,
+          y: container.y,
           duration: animDuration(180),
           delay: animDelay(index * 24),
           ease: 'Sine.Out',
@@ -1545,13 +1791,29 @@ export class GameScene extends Phaser.Scene {
         cardId,
         container,
         body,
+        baseY: y,
       });
     });
   }
 
   private refreshCardSelection(): void {
     this.cardVisuals.forEach((entry) => {
-      entry.body.setStrokeStyle(entry.cardId === this.selectedCardId ? 4 : 2, entry.cardId === this.selectedCardId ? 0xfff3dd : 0xf1dbc2);
+      const selected = entry.cardId === this.selectedCardId;
+      entry.body.setStrokeStyle(selected ? 4 : 2, selected ? THEME.gold : 0xf1dbc2);
+      this.tweens.killTweensOf(entry.container);
+      if (this.animationsEnabled) {
+        this.tweens.add({
+          targets: entry.container,
+          y: selected ? entry.baseY - 16 : entry.baseY,
+          scaleX: selected ? 1.06 : 1,
+          scaleY: selected ? 1.06 : 1,
+          duration: animDuration(130),
+          ease: 'Sine.Out',
+        });
+      } else {
+        entry.container.setY(selected ? entry.baseY - 16 : entry.baseY);
+        entry.container.setScale(selected ? 1.06 : 1);
+      }
     });
   }
 
