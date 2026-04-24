@@ -52,7 +52,6 @@ interface Point {
   y: number;
 }
 
-const TIMER_PLACEHOLDER_SECONDS = 20;
 const SWIPE_THRESHOLD = 44;
 const NARROW_LAYOUT_WIDTH = 720;
 
@@ -143,10 +142,6 @@ export class GameScene extends Phaser.Scene {
   private opponentTowerText!: Phaser.GameObjects.Text;
   private turnLabelText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
-  private timerText!: Phaser.GameObjects.Text;
-  private timerBarFill!: Phaser.GameObjects.Rectangle;
-  private timerRing!: Phaser.GameObjects.Graphics;
-  private timerRingCenter: Point = { x: 0, y: 0 };
   private topInfoGlow!: Phaser.GameObjects.Rectangle;
   private turnIndicatorPlayer!: Phaser.GameObjects.Arc;
   private turnIndicatorAi!: Phaser.GameObjects.Arc;
@@ -166,9 +161,6 @@ export class GameScene extends Phaser.Scene {
   private resultPersisted = false;
 
   private animationsEnabled = true;
-
-  private turnTimerSeconds = TIMER_PLACEHOLDER_SECONDS;
-  private turnSignature = '';
 
   constructor() {
     super('GameScene');
@@ -200,7 +192,6 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.tickAi(delta);
-    this.updateTurnTimer(delta);
   }
 
   private handleResize(): void {
@@ -386,28 +377,6 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    const timerBarWidth = narrow ? 94 : 164;
-    const timerFillWidth = timerBarWidth - 4;
-    const timerBarBg = this.add.rectangle(
-      centerX + panelWidth / 2 - timerBarWidth / 2 - (narrow ? 10 : 30),
-      panelCenterY - (narrow ? 24 : 28),
-      timerBarWidth,
-      narrow ? 12 : 14,
-      0x43597a,
-      0.82,
-    );
-    this.timerBarFill = this.add.rectangle(timerBarBg.x - timerFillWidth / 2, timerBarBg.y, timerFillWidth, narrow ? 8 : 10, 0x66d186, 0.96).setOrigin(0, 0.5);
-    this.timerText = this.add
-      .text(timerBarBg.x, timerBarBg.y + (narrow ? 12 : 16), 'Timer: 20s', {
-        fontFamily: 'Georgia',
-        fontSize: narrow ? '11px' : '14px',
-        color: '#243344',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    this.timerRingCenter = { x: timerBarBg.x + timerBarWidth / 2 - (narrow ? 10 : 10), y: timerBarBg.y + 3 };
-    this.timerRing = this.add.graphics();
-
     this.statusText = this.add
       .text(centerX, topY + panelHeight + (narrow ? 28 : 38), '', {
         fontFamily: 'Georgia',
@@ -431,14 +400,8 @@ export class GameScene extends Phaser.Scene {
       this.turnIndicatorAi,
       turnIndicatorAiText,
       this.turnLabelText,
-      timerBarBg,
-      this.timerBarFill,
-      this.timerRing,
-      this.timerText,
       this.statusText,
     ]);
-
-    this.refreshTimerVisual();
   }
 
   private createSidePanels(width: number, height: number): void {
@@ -846,9 +809,6 @@ export class GameScene extends Phaser.Scene {
     this.aiCountdownMs = null;
     this.gestureState.clear();
 
-    this.turnTimerSeconds = TIMER_PLACEHOLDER_SECONDS;
-    this.turnSignature = '';
-
     this.endOverlay.setVisible(false);
     this.updateHud();
   }
@@ -1224,48 +1184,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updateTurnTimer(delta: number): void {
-    if (this.state.phase !== 'playing' || !this.state.turn.started) {
-      return;
-    }
-
-    this.turnTimerSeconds = Math.max(0, this.turnTimerSeconds - delta / 1000);
-    this.refreshTimerVisual();
-  }
-
-  private refreshTimerVisual(): void {
-    const ratio = Phaser.Math.Clamp(this.turnTimerSeconds / TIMER_PLACEHOLDER_SECONDS, 0, 1);
-    this.timerBarFill.setScale(ratio, 1);
-    this.timerText.setText(`Timer: ${Math.ceil(this.turnTimerSeconds)}s`);
-    this.timerRing.clear();
-    this.timerRing.lineStyle(3, 0x43597a, 0.95);
-    this.timerRing.strokeCircle(this.timerRingCenter.x, this.timerRingCenter.y, 14);
-    if (ratio <= 0) {
-      return;
-    }
-    this.timerRing.lineStyle(4, 0x66d186, 1);
-    this.timerRing.beginPath();
-    this.timerRing.arc(
-      this.timerRingCenter.x,
-      this.timerRingCenter.y,
-      14,
-      Phaser.Math.DegToRad(-90),
-      Phaser.Math.DegToRad(-90 + ratio * 360),
-      false,
-    );
-    this.timerRing.strokePath();
-  }
-
   private updateHud(): void {
     const player = this.state.players.player;
     const ai = this.state.players.ai;
-
-    const signature = `${this.state.turn.number}:${this.state.turn.current}:${this.state.turn.started}`;
-    if (signature !== this.turnSignature && this.state.turn.started) {
-      this.turnSignature = signature;
-      this.turnTimerSeconds = TIMER_PLACEHOLDER_SECONDS;
-      this.refreshTimerVisual();
-    }
 
     this.opponentNameText.setText('Opponent: Player B (AI)');
     this.opponentTowerText.setText(`Tower: ${ai.tower}`);
@@ -1517,7 +1438,6 @@ export class GameScene extends Phaser.Scene {
     const delta = ms / steps;
     for (let i = 0; i < steps; i += 1) {
       this.tickAi(delta);
-      this.updateTurnTimer(delta);
     }
   }
 
@@ -1525,7 +1445,6 @@ export class GameScene extends Phaser.Scene {
     const payload = JSON.parse(summarizeForText(this.state)) as Record<string, unknown>;
     payload.ui = {
       activePlayer: this.state.turn.current,
-      timerDisplaySeconds: Math.ceil(this.turnTimerSeconds),
       selectedCardId: this.selectedCardId,
       phase: this.state.phase,
     };

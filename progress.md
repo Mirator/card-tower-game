@@ -43,3 +43,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Gated browser automation globals (`render_game_to_text`, `advanceTime`, `__phaserGame`, `__game`) behind development mode or `VITE_EXPOSE_TEST_HOOKS=true`.
 - Added compact narrow-screen layouts for MenuScene and GameScene so phone-width screens no longer clip the title, panels, or hand row horizontally.
 - Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game Playwright client, a 375x667 dev smoke interaction, and a production preview check confirming automation globals are undefined.
+
+## Timer Removal
+- Removed the turn countdown UI from `GameScene` and deleted the turn timer state/reset/update logic.
+- Kept `advanceTime(ms)` for automation because it drives deterministic testing and no longer advances any player-facing turn timer.
+- Removed `timerDisplaySeconds` from `render_game_to_text`.
+- Updated the product/UI specs to describe v1 as fast but untimed.
+- Verified with `npm run lint`, `npm test`, `npm run build`, desktop Playwright smoke, and 375x667 mobile smoke; screenshots show no timer UI and text state has no timer field.

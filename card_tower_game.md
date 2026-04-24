@@ -12,7 +12,7 @@ The player and AI opponent manage three resource economies, draw cards, and play
 - Clean Phaser-based implementation (no React)
 
 ## Design pillars
-- Fast turns (3–10 seconds)
+- Fast, untimed turns with low-friction decisions
 - High readability
 - Meaningful single-action decisions
 - Low input friction (mouse + touch)
