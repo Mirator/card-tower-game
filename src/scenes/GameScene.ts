@@ -81,12 +81,12 @@ const FONT_FAMILY = 'Georgia';
 
 const THEME = {
   parchment: 0xf3efe4,
-  playerBlue: 0x3f63a8,
+  playerBlue: 0x4a74c9,
   playerBlack: 0x252832,
   enemyRed: 0x9b514d,
-  brick: 0x9f5b46,
-  weapon: 0x3f7d4d,
-  crystal: 0x3f63a8,
+  brick: 0xa88746,
+  weapon: 0xb5433c,
+  crystal: 0x4a74c9,
   gold: 0xffe2b8,
   night: 0x0b1726,
 };
@@ -107,21 +107,21 @@ const RESOURCE_META: Record<
     label: 'Builders',
     resourceName: 'Bricks',
     iconLabel: 'HAM',
-    color: 0x9f5b46,
+    color: THEME.brick,
     generatorKey: 'quarry',
   },
   weapons: {
     label: 'Soldiers',
     resourceName: 'Weapons',
     iconLabel: 'SWD',
-    color: 0x3f7d4d,
+    color: THEME.weapon,
     generatorKey: 'barracks',
   },
   crystals: {
     label: 'Mages',
     resourceName: 'Crystals',
     iconLabel: 'STR',
-    color: 0x3f63a8,
+    color: THEME.crystal,
     generatorKey: 'magic',
   },
 };
@@ -151,14 +151,14 @@ function mixColor(from: number, to: number, amount: number): number {
 }
 
 function cardFillColor(domain: Resource, affordable: boolean): number {
-  return affordable ? mixColor(cardTypeColor(domain), THEME.parchment, 0.42) : 0x60656d;
+  return affordable ? mixColor(cardTypeColor(domain), THEME.parchment, 0.42) : 0x8a7f74;
 }
 
 function cardBorderColor(domain: Resource, affordable: boolean, selected: boolean): number {
   if (selected) {
     return THEME.gold;
   }
-  return affordable ? cardTypeColor(domain) : 0x969da7;
+  return affordable ? cardTypeColor(domain) : 0xd3c2b0;
 }
 
 function paintCardFrame(
@@ -173,7 +173,7 @@ function paintCardFrame(
   frame.clear();
   frame.fillStyle(0x03070f, 0.28);
   frame.fillRoundedRect(-width / 2 + 4, -height / 2 + 7, width, height, radius);
-  frame.fillStyle(cardFillColor(domain, affordable), affordable ? 0.98 : 0.58);
+  frame.fillStyle(cardFillColor(domain, affordable), affordable ? 0.98 : 0.84);
   frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
   frame.lineStyle(selected ? 4 : 2, cardBorderColor(domain, affordable, selected), affordable ? 0.98 : 0.78);
   frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
@@ -187,8 +187,8 @@ function createResourceIcon(
   size: number,
   muted: boolean,
 ): Phaser.GameObjects.Graphics {
-  const color = muted ? 0xa3a8b1 : cardTypeColor(resource);
-  const accent = muted ? 0xc4c8cf : mixColor(color, 0xffffff, 0.3);
+  const color = muted ? 0xd2c6ba : cardTypeColor(resource);
+  const accent = muted ? 0xf0e6dc : mixColor(color, 0xffffff, 0.3);
   const graphics = scene.add.graphics();
   graphics.setPosition(x, y);
 
@@ -261,9 +261,9 @@ function createIllustrationIcon(
   const graphics = scene.add.graphics();
   graphics.setPosition(x, y);
 
-  const main = muted ? 0xa6abb2 : color;
-  const light = muted ? 0xc8ccd2 : mixColor(color, 0xffffff, 0.42);
-  const dark = muted ? 0x555b63 : mixColor(color, 0x000000, 0.36);
+  const main = muted ? 0xd8cdc1 : color;
+  const light = muted ? 0xf2ece5 : mixColor(color, 0xffffff, 0.42);
+  const dark = muted ? 0x6c625a : mixColor(color, 0x000000, 0.36);
 
   switch (illustration) {
     case 'wall': {
@@ -2300,7 +2300,7 @@ export class GameScene extends Phaser.Scene {
         .text(0, titleY, card.name, {
           fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '8px' : compact ? '12px' : '16px',
-          color: muted ? '#d4d8de' : '#241d19',
+          color: muted ? '#f0e5d8' : '#241d19',
           fontStyle: 'bold',
           align: 'center',
           wordWrap: { width: titleWrapWidth },
@@ -2312,15 +2312,15 @@ export class GameScene extends Phaser.Scene {
         cardWidth / 2 - cardPadding - iconSize / 2,
         -cardHeight / 2 + cardPadding + iconSize / 2,
         ultraCompact ? 8 : compact ? 11 : 14,
-        muted ? 0x4b515a : 0x1f2a39,
+        muted ? 0x6e6258 : 0x1f2a39,
         0.96,
       );
-      costBadge.setStrokeStyle(2, muted ? 0xb1b7c0 : 0xf0e3c7, muted ? 0.62 : 0.95);
+      costBadge.setStrokeStyle(2, muted ? 0xe4d8ca : 0xf0e3c7, muted ? 0.78 : 0.95);
       const costText = this.add
         .text(costBadge.x, costBadge.y, String(card.cost), {
           fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '8px' : compact ? '12px' : '16px',
-          color: muted ? '#d8dde5' : '#f9f4e7',
+          color: muted ? '#f4ece3' : '#f9f4e7',
           fontStyle: 'bold',
         })
         .setOrigin(0.5);
@@ -2339,7 +2339,7 @@ export class GameScene extends Phaser.Scene {
         .text(0, cardHeight / 2 - (ultraCompact ? 14 : compact ? 20 : 25), ultraCompact ? '' : effectText, {
           fontFamily: FONT_FAMILY,
           fontSize: compact ? '10px' : '13px',
-          color: muted ? '#d8dde5' : '#2f2924',
+          color: muted ? '#efe4d7' : '#2f2924',
           align: 'center',
           wordWrap: { width: Math.max(30, cardWidth - cardPadding * 2) },
         })

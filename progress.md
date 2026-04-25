@@ -86,3 +86,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Changed unaffordable card clicks to stay quiet instead of writing failure logs, while keeping selection, keyboard, touch, and explicit Play/Discard actions intact.
 - Updated `specs/09-ui.md`, `README.md`, and `card_tower_game.md` to match the new layout and interaction wording.
 - Verified with `npm run lint`, `npm test`, `npm run build`, a direct Playwright page check on `http://127.0.0.1:4173`, and smoke screenshots/state dumps in `output/ui-card-smoke/`.
+
+## Palette Refresh
+- Changed the resource/card language so weapons use crimson red, bricks use sandstone/ochre, and crystals remain blue.
+- Reserved green for positive feedback such as readiness, healing, and gains instead of attack card identity.
+- Brightened disabled card fills, borders, badge colors, and muted icon/text colors so the rightmost unplayable card remains readable against the dark hand surface.
+- Updated the UI spec, root GDD, and README to describe the revised color semantics.
+- Verified with `npm run lint`, `npm test`, `npm run build`, and a fresh Playwright smoke pass on `http://127.0.0.1:4173` with artifacts in `output/palette-smoke/`.

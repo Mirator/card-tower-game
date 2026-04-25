@@ -9,7 +9,7 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 - AI opponent with lethal/prevent-lethal/heuristic priorities
 - Boot/Menu/Game scene flow with rematch loop
 - Black vs Red duel screen with top draw preview and 6-card hand row
-- Card UI with type icons, center illustrations, and disabled grey state
+- Card UI with sandstone brick cards, crimson weapon cards, blue crystal cards, and a brighter disabled grey state
 - Selected-card command panel with explicit Play and Discard actions
 - Local persistence for stats/settings (`localStorage`)
 - Dev-gated automation hooks for scripted validation

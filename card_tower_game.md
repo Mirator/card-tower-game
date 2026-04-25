@@ -118,6 +118,13 @@ The implemented UI uses:
 - Bottom cockpit with 6 visible hand cards, selected-card preview, explicit Play/Discard buttons, compact battle feed, and minimal controls hint
 - No turn timer in v1
 
+Card/resource color language:
+- Bricks use sandstone / ochre
+- Weapons use crimson red
+- Crystals use blue
+- Neutral grey is reserved for disabled cards
+- Green remains a positive-state accent rather than the identity color for attack cards
+
 Controls:
 - Left click a playable card: play it immediately
 - Left click an unplayable card: no action
