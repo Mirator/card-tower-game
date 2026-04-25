@@ -58,6 +58,39 @@ interface ActionButtonRefs {
   text: Phaser.GameObjects.Text;
 }
 
+interface TopPileRefs {
+  width: number;
+  height: number;
+  container: Phaser.GameObjects.Container;
+  frame: Phaser.GameObjects.Graphics;
+  stackBackA: Phaser.GameObjects.Rectangle;
+  stackBackB: Phaser.GameObjects.Rectangle;
+  labelText: Phaser.GameObjects.Text;
+  titleText: Phaser.GameObjects.Text;
+  metaText: Phaser.GameObjects.Text;
+  countBg: Phaser.GameObjects.Arc;
+  countText: Phaser.GameObjects.Text;
+}
+
+interface EnemyHandVisual {
+  handIndex: number;
+  container: Phaser.GameObjects.Container;
+  baseY: number;
+}
+
+interface EnemyHandRefs {
+  width: number;
+  height: number;
+  container: Phaser.GameObjects.Container;
+  rail: Phaser.GameObjects.Rectangle;
+  labelText: Phaser.GameObjects.Text;
+  countBg: Phaser.GameObjects.Arc;
+  countText: Phaser.GameObjects.Text;
+  cardsContainer: Phaser.GameObjects.Container;
+  overflowBg: Phaser.GameObjects.Arc;
+  overflowText: Phaser.GameObjects.Text;
+}
+
 interface GestureState {
   cardId: string;
   handIndex: number;
@@ -75,6 +108,7 @@ const SWIPE_THRESHOLD = 44;
 const NARROW_LAYOUT_WIDTH = 720;
 const ANIMATION_PACE = 1.5;
 const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
+const ENEMY_CARD_SELECTION_MS = 540;
 const ENEMY_CARD_REVEAL_MS = 2200;
 
 const FONT_FAMILY = 'Georgia';
@@ -434,16 +468,12 @@ export class GameScene extends Phaser.Scene {
   private playerTowerVisual!: TowerVisualRefs;
   private aiTowerVisual!: TowerVisualRefs;
 
-  private deckCard!: Phaser.GameObjects.Rectangle;
-  private drawPreviewContainer!: Phaser.GameObjects.Container;
-  private drawPreviewFrame!: Phaser.GameObjects.Graphics;
-  private drawPreviewTitleText!: Phaser.GameObjects.Text;
-  private drawPreviewEffectText!: Phaser.GameObjects.Text;
-  private drawPreviewCostText!: Phaser.GameObjects.Text;
-  private drawPreviewWidth = 0;
-  private drawPreviewHeight = 0;
-  private opponentNameText!: Phaser.GameObjects.Text;
-  private opponentTowerText!: Phaser.GameObjects.Text;
+  private playerDeckPile!: TopPileRefs;
+  private playerDiscardPile!: TopPileRefs;
+  private aiDiscardPile!: TopPileRefs;
+  private enemyHand!: EnemyHandRefs;
+  private enemyHandVisuals: EnemyHandVisual[] = [];
+  private topSummaryText!: Phaser.GameObjects.Text;
   private turnLabelText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private topInfoGlow!: Phaser.GameObjects.Rectangle;
@@ -468,10 +498,11 @@ export class GameScene extends Phaser.Scene {
 
   private selectedCardId: string | null = null;
   private selectedHandIndex: number | null = null;
-  private drawPreviewCardId: string | null = null;
   private aiCountdownMs: number | null = null;
+  private aiSelectionCountdownMs: number | null = null;
   private aiRevealCountdownMs: number | null = null;
   private aiPendingAction: Action | null = null;
+  private aiSelectedHandIndex: number | null = null;
   private enemyCardRevealContainer: Phaser.GameObjects.Container | null = null;
   private resultPersisted = false;
 
@@ -530,6 +561,7 @@ export class GameScene extends Phaser.Scene {
 
   private destroyLayout(): void {
     this.cardVisuals = [];
+    this.enemyHandVisuals = [];
     this.enemyCardRevealContainer = null;
 
     this.backgroundContainer?.destroy(true);
@@ -618,19 +650,20 @@ export class GameScene extends Phaser.Scene {
     this.topCenterContainer.setDepth(20);
 
     const narrow = this.isNarrowLayout(width);
-    const panelWidth = narrow ? Math.max(286, width - 18) : Math.max(620, Math.min(980, width * 0.62));
-    const panelHeight = narrow ? 66 : 76;
+    const panelWidth = narrow ? Math.max(314, width - 18) : Math.max(760, Math.min(1040, width * 0.78));
+    const panelHeight = narrow ? 84 : 102;
     const centerX = width / 2;
     const topY = Math.max(8, Math.round(height * 0.018));
     const panelCenterY = topY + panelHeight / 2;
-    const deckWidth = narrow ? 34 : 44;
-    const deckHeight = narrow ? 46 : 58;
-    const deckX = centerX - panelWidth / 2 + (narrow ? 28 : 40);
-    const deckY = panelCenterY;
-    this.drawPreviewWidth = narrow ? 58 : 82;
-    this.drawPreviewHeight = narrow ? 46 : 58;
-    const previewX = deckX + deckWidth / 2 + this.drawPreviewWidth / 2 + (narrow ? 8 : 12);
-    const sideTextWidth = narrow ? Math.max(84, panelWidth * 0.26) : Math.max(168, panelWidth * 0.24);
+    const pileWidth = narrow ? 58 : 76;
+    const pileHeight = narrow ? 68 : 86;
+    const deckX = centerX - panelWidth / 2 + (narrow ? 38 : 54);
+    const playerDiscardX = deckX + pileWidth + (narrow ? 16 : 20);
+    const enemyHandWidth = narrow ? 138 : 198;
+    const enemyHandHeight = narrow ? 54 : 66;
+    const enemyHandX = centerX + panelWidth / 2 - enemyHandWidth / 2 - (narrow ? 16 : 22);
+    const aiDiscardX = enemyHandX - enemyHandWidth / 2 - pileWidth / 2 - (narrow ? 16 : 20);
+    const summaryWidth = Math.max(190, aiDiscardX - playerDiscardX - pileWidth);
 
     this.topInfoGlow = this.add
       .rectangle(centerX, panelCenterY, panelWidth + 8, panelHeight + 8, 0x000000, 0)
@@ -639,75 +672,27 @@ export class GameScene extends Phaser.Scene {
     const panel = this.add
       .rectangle(centerX, panelCenterY, panelWidth, panelHeight, THEME.night, 0.88)
       .setStrokeStyle(2, THEME.gold, 0.82);
+    this.topCenterContainer.add([this.topInfoGlow, panel]);
 
-    this.deckCard = this.add
-      .rectangle(deckX, deckY, deckWidth, deckHeight, 0x283651, 0.98)
-      .setStrokeStyle(2, 0xd7dff3, 0.85);
-    const deckPatternWidth = narrow ? 22 : 30;
-    const deckPatternA = this.add.rectangle(deckX, deckY - (narrow ? 9 : 12), deckPatternWidth, 5, 0x6f86bc, 0.95);
-    const deckPatternB = this.add.rectangle(deckX, deckY + (narrow ? 2 : 3), deckPatternWidth, 5, 0x6f86bc, 0.95);
-    const deckPatternC = this.add.rectangle(deckX, deckY + (narrow ? 13 : 18), deckPatternWidth, 5, 0x6f86bc, 0.95);
+    this.playerDeckPile = this.createTopPile(deckX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
+    this.playerDiscardPile = this.createTopPile(playerDiscardX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
+    this.aiDiscardPile = this.createTopPile(aiDiscardX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
+    this.enemyHand = this.createEnemyHandRail(enemyHandX, panelCenterY + (narrow ? 1 : 2), enemyHandWidth, enemyHandHeight);
 
-    this.drawPreviewFrame = this.add.graphics();
-    this.drawPreviewTitleText = this.add
-      .text(0, narrow ? -13 : -18, 'Draw', {
+    this.topSummaryText = this.add
+      .text(centerX, panelCenterY - (narrow ? 8 : 12), 'Goal 100 | Red C30 / W10', {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '8px' : '11px',
-        color: '#2b241d',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: this.drawPreviewWidth - 12 },
-      })
-      .setOrigin(0.5);
-    this.drawPreviewEffectText = this.add
-      .text(0, narrow ? 7 : 10, 'Ready', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '7px' : '9px',
-        color: '#3d352f',
-        align: 'center',
-        wordWrap: { width: this.drawPreviewWidth - 10 },
-      })
-      .setOrigin(0.5);
-    this.drawPreviewCostText = this.add
-      .text(this.drawPreviewWidth / 2 - (narrow ? 8 : 11), -this.drawPreviewHeight / 2 + (narrow ? 8 : 11), '', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '8px' : '10px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
-    this.drawPreviewContainer = this.add.container(previewX, deckY, [
-      this.drawPreviewFrame,
-      this.drawPreviewTitleText,
-      this.drawPreviewEffectText,
-      this.drawPreviewCostText,
-    ]);
-
-    this.opponentNameText = this.add
-      .text(centerX + panelWidth / 2 - (narrow ? 10 : 20), panelCenterY - (narrow ? 19 : 21), 'Red C30 / W10', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '11px' : '15px',
+        fontSize: narrow ? '10px' : '15px',
         color: '#dce8f7',
         fontStyle: 'bold',
-        align: 'right',
-        wordWrap: { width: sideTextWidth },
+        align: 'center',
+        wordWrap: { width: summaryWidth },
       })
-      .setOrigin(1, 0);
+      .setOrigin(0.5);
 
-    this.opponentTowerText = this.add
-      .text(centerX + panelWidth / 2 - (narrow ? 10 : 20), panelCenterY + (narrow ? 4 : 6), 'Goal 50', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '11px' : '15px',
-        color: '#f7dfb8',
-        fontStyle: 'bold',
-        align: 'right',
-        wordWrap: { width: sideTextWidth },
-      })
-      .setOrigin(1, 0);
-
-    const indicatorY = panelCenterY + (narrow ? 17 : 20);
+    const indicatorY = panelCenterY + (narrow ? 26 : 28);
     const indicatorRadius = narrow ? 6 : 8;
-    const indicatorStartX = previewX + this.drawPreviewWidth / 2 + (narrow ? 14 : 20);
+    const indicatorStartX = centerX - (narrow ? 12 : 14);
     this.turnIndicatorPlayer = this.add.circle(indicatorStartX, indicatorY, indicatorRadius, THEME.playerBlack, 0.4).setStrokeStyle(2, 0xd8e5ff);
     const turnIndicatorPlayerText = this.add
       .text(this.turnIndicatorPlayer.x, indicatorY, 'B', {
@@ -728,41 +713,279 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.turnLabelText = this.add
-      .text(centerX, panelCenterY - (narrow ? 21 : 24), 'Your turn', {
+      .text(centerX, panelCenterY - (narrow ? 28 : 33), 'Your turn', {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '18px' : '26px',
+        fontSize: narrow ? '17px' : '25px',
         color: '#fff1d2',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5);
 
     this.statusText = this.add
-      .text(centerX, panelCenterY + (narrow ? 7 : 10), '', {
+      .text(centerX, panelCenterY + (narrow ? 9 : 12), '', {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '10px' : '13px',
+        fontSize: narrow ? '9px' : '12px',
         color: '#d9e2ef',
         align: 'center',
-        wordWrap: { width: Math.max(150, panelWidth * 0.48) },
+        wordWrap: { width: Math.max(176, summaryWidth) },
+      })
+      .setOrigin(0.5);
+
+    this.topCenterContainer.add([this.topSummaryText, this.turnIndicatorPlayer, turnIndicatorPlayerText, this.turnIndicatorAi, turnIndicatorAiText, this.turnLabelText, this.statusText]);
+  }
+
+  private createTopPile(x: number, y: number, width: number, height: number): TopPileRefs {
+    const shadowA = this.add.rectangle(-6, -4, width, height, 0x07101c, 0.24).setStrokeStyle(2, 0xd7dff3, 0.08);
+    const shadowB = this.add.rectangle(-3, -2, width, height, 0x0d1a29, 0.46).setStrokeStyle(2, 0xd7dff3, 0.12);
+    const frame = this.add.graphics();
+    const labelText = this.add
+      .text(0, -height / 2 + 7, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '7px' : '9px',
+        color: '#f2e7d4',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: width - 10 },
       })
       .setOrigin(0.5, 0);
+    const titleText = this.add
+      .text(0, -4, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '9px' : '12px',
+        color: '#fff4e0',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: width - 12 },
+      })
+      .setOrigin(0.5);
+    titleText.setLineSpacing(-2);
+    const metaText = this.add
+      .text(0, height / 2 - 14, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '7px' : '9px',
+        color: '#e6dccd',
+        align: 'center',
+        wordWrap: { width: width - 12 },
+      })
+      .setOrigin(0.5);
+    const countBg = this.add.circle(width / 2 - 10, -height / 2 + 10, this.isNarrowLayout() ? 8 : 10, 0x1f2a39, 0.96);
+    countBg.setStrokeStyle(2, 0xf0e3c7, 0.84);
+    const countText = this.add
+      .text(countBg.x, countBg.y, '0', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '8px' : '10px',
+        color: '#fff6e7',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
 
-    this.topCenterContainer.add([
-      this.topInfoGlow,
-      panel,
-      this.deckCard,
-      deckPatternA,
-      deckPatternB,
-      deckPatternC,
-      this.drawPreviewContainer,
-      this.opponentNameText,
-      this.opponentTowerText,
-      this.turnIndicatorPlayer,
-      turnIndicatorPlayerText,
-      this.turnIndicatorAi,
-      turnIndicatorAiText,
-      this.turnLabelText,
-      this.statusText,
-    ]);
+    const container = this.add.container(x, y, [shadowA, shadowB, frame, labelText, titleText, metaText, countBg, countText]);
+    this.topCenterContainer.add(container);
+    return {
+      width,
+      height,
+      container,
+      frame,
+      stackBackA: shadowA,
+      stackBackB: shadowB,
+      labelText,
+      titleText,
+      metaText,
+      countBg,
+      countText,
+    };
+  }
+
+  private createEnemyHandRail(x: number, y: number, width: number, height: number): EnemyHandRefs {
+    const rail = this.add.rectangle(0, 0, width, height, 0x101a29, 0.9).setStrokeStyle(2, 0xd6c5b0, 0.46);
+    const labelText = this.add
+      .text(-width / 2 + 10, -height / 2 + 6, 'Red hidden hand', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '7px' : '9px',
+        color: '#f2e7d4',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0, 0);
+    const countBg = this.add.circle(width / 2 - 12, -height / 2 + 12, this.isNarrowLayout() ? 8 : 10, 0x8b4f3e, 0.95);
+    countBg.setStrokeStyle(2, 0xf6d7c5, 0.86);
+    const countText = this.add
+      .text(countBg.x, countBg.y, '0', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '8px' : '10px',
+        color: '#fff4e4',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    const cardsContainer = this.add.container(0, this.isNarrowLayout() ? 6 : 7);
+    const overflowBg = this.add.circle(width / 2 - 16, height / 2 - 12, this.isNarrowLayout() ? 8 : 10, 0x253546, 0.92);
+    overflowBg.setVisible(false);
+    const overflowText = this.add
+      .text(overflowBg.x, overflowBg.y, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '7px' : '9px',
+        color: '#f6ecdd',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setVisible(false);
+
+    const container = this.add.container(x, y, [rail, labelText, cardsContainer, countBg, countText, overflowBg, overflowText]);
+    this.topCenterContainer.add(container);
+    return {
+      width,
+      height,
+      container,
+      rail,
+      labelText,
+      countBg,
+      countText,
+      cardsContainer,
+      overflowBg,
+      overflowText,
+    };
+  }
+
+  private updateTopPileViews(): void {
+    this.updatePileView(this.playerDeckPile, {
+      kind: 'deck',
+      owner: 'player',
+      label: 'Black deck',
+      count: this.state.players.player.deck.length,
+    });
+    this.updatePileView(this.playerDiscardPile, {
+      kind: 'discard',
+      owner: 'player',
+      label: 'Black discard',
+      count: this.state.players.player.discard.length,
+      topCardId: this.state.players.player.discard.at(-1) ?? null,
+    });
+    this.updatePileView(this.aiDiscardPile, {
+      kind: 'discard',
+      owner: 'ai',
+      label: 'Red discard',
+      count: this.state.players.ai.discard.length,
+      topCardId: this.state.players.ai.discard.at(-1) ?? null,
+    });
+  }
+
+  private updatePileView(
+    pile: TopPileRefs,
+    options: { kind: 'deck' | 'discard'; owner: PlayerId; label: string; count: number; topCardId?: string | null },
+  ): void {
+    const narrow = this.isNarrowLayout();
+    const radius = narrow ? 6 : 8;
+    const { width, height } = pile;
+    const card = options.topCardId ? CARD_BY_ID[options.topCardId] : null;
+    const ownerColor = options.owner === 'player' ? THEME.playerBlack : THEME.enemyRed;
+
+    pile.labelText.setText(options.label);
+    pile.countText.setText(String(options.count));
+    pile.countBg.setFillStyle(options.kind === 'deck' ? 0x253546 : ownerColor, 0.96);
+    pile.countBg.setStrokeStyle(2, options.kind === 'deck' ? 0xf0e3c7 : 0xf6d7c5, 0.84);
+
+    pile.frame.clear();
+    pile.stackBackA.setVisible(options.count > 0);
+    pile.stackBackB.setVisible(options.count > 0);
+
+    if (options.kind === 'deck') {
+      pile.stackBackA.setFillStyle(0x1b2b43, options.count > 1 ? 0.54 : 0.18);
+      pile.stackBackB.setFillStyle(0x20324c, options.count > 0 ? 0.72 : 0.24);
+
+      pile.frame.fillStyle(0x283651, 0.98);
+      pile.frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
+      pile.frame.lineStyle(2, 0xd7dff3, 0.84);
+      pile.frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
+      pile.frame.fillStyle(0x6f86bc, 0.94);
+      pile.frame.fillRoundedRect(-width * 0.28, -height * 0.18, width * 0.56, 5, 2);
+      pile.frame.fillRoundedRect(-width * 0.26, 2, width * 0.52, 5, 2);
+      pile.frame.fillRoundedRect(-width * 0.24, height * 0.18, width * 0.48, 5, 2);
+      pile.titleText.setText(options.count > 0 ? 'Draw pile' : 'Deck empty');
+      pile.titleText.setColor('#f2f5fb');
+      pile.metaText.setText(options.count > 0 ? 'Reshuffles from discard' : 'Waiting for reshuffle');
+      pile.metaText.setColor('#d9e2ef');
+      return;
+    }
+
+    pile.stackBackA.setFillStyle(card ? ownerColor : 0x182334, card ? 0.22 : 0.12);
+    pile.stackBackB.setFillStyle(card ? ownerColor : 0x182334, card ? 0.34 : 0.18);
+
+    if (!card) {
+      pile.frame.fillStyle(0x121c2b, 0.9);
+      pile.frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
+      pile.frame.lineStyle(2, 0xd0c0ad, 0.54);
+      pile.frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
+      pile.titleText.setText('Empty');
+      pile.titleText.setColor('#e4d8c9');
+      pile.metaText.setText('Top card hidden until used');
+      pile.metaText.setColor('#c7bcae');
+      return;
+    }
+
+    const fill = mixColor(cardTypeColor(card.domain), THEME.parchment, 0.42);
+    pile.frame.fillStyle(fill, 0.98);
+    pile.frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
+    pile.frame.lineStyle(2, cardTypeColor(card.domain), 0.94);
+    pile.frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
+    pile.frame.fillStyle(ownerColor, 0.12);
+    pile.frame.fillRoundedRect(-width / 2 + 5, -height / 2 + 18, width - 10, 1, 1);
+    pile.titleText.setText(card.name);
+    pile.titleText.setColor('#241d19');
+    pile.metaText.setText(`${RESOURCE_META[card.domain].resourceName} ${card.cost}`);
+    pile.metaText.setColor('#3d352f');
+  }
+
+  private rebuildEnemyHand(): void {
+    this.enemyHandVisuals.forEach((entry) => entry.container.destroy(true));
+    this.enemyHandVisuals = [];
+
+    const hand = this.state.players.ai.hand;
+    const narrow = this.isNarrowLayout();
+    const visibleSlots = narrow ? 4 : 6;
+    const shownCount = Math.min(hand.length, visibleSlots);
+    const hiddenCount = Math.max(0, hand.length - shownCount);
+    const cardWidth = narrow ? 26 : 34;
+    const cardHeight = narrow ? 34 : 46;
+    const gap = narrow ? 14 : 18;
+    const start = this.getEnemyHandWindowStart(hand.length, shownCount);
+    const rowWidth = shownCount > 0 ? cardWidth + (shownCount - 1) * gap : 0;
+    const startX = -rowWidth / 2 + cardWidth / 2;
+
+    this.enemyHand.labelText.setText('Red hidden hand');
+    this.enemyHand.countText.setText(String(hand.length));
+    this.enemyHand.overflowBg.setVisible(hiddenCount > 0);
+    this.enemyHand.overflowText.setVisible(hiddenCount > 0);
+    this.enemyHand.overflowText.setText(hiddenCount > 0 ? `+${hiddenCount}` : '');
+
+    for (let slot = 0; slot < shownCount; slot += 1) {
+      const handIndex = start + slot;
+      const selected = handIndex === this.aiSelectedHandIndex;
+      const x = startX + slot * gap;
+      const baseY = 0;
+      const container = this.add.container(x, selected ? baseY - 7 : baseY);
+      container.setScale(selected ? 1.08 : 1);
+
+      const shadow = this.add.rectangle(3, 4, cardWidth, cardHeight, 0x04080f, 0.3);
+      const body = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x22324a, 0.98).setStrokeStyle(selected ? 3 : 2, selected ? THEME.gold : 0xaeb7c8, selected ? 0.94 : 0.72);
+      const topBand = this.add.rectangle(0, -cardHeight / 2 + 7, cardWidth - 8, 5, 0x6f86bc, 0.95);
+      const midBand = this.add.rectangle(0, 0, cardWidth - 10, 4, 0xd7dff3, 0.24);
+      const mark = this.add.text(0, 0, '?', {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '14px' : '18px',
+        color: selected ? '#fff3de' : '#dbe4f3',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      container.add([shadow, body, topBand, midBand, mark]);
+      this.enemyHand.cardsContainer.add(container);
+      this.enemyHandVisuals.push({ handIndex, container, baseY });
+    }
+  }
+
+  private getEnemyHandWindowStart(handLength: number, shownCount: number): number {
+    if (handLength <= shownCount || this.aiSelectedHandIndex === null) {
+      return 0;
+    }
+    return Math.max(0, Math.min(this.aiSelectedHandIndex - shownCount + 1, handLength - shownCount));
   }
 
   private createSidePanels(width: number, height: number): void {
@@ -1272,13 +1495,14 @@ export class GameScene extends Phaser.Scene {
     const matchSeed = seed ?? seedFromNow();
     this.rng = new SeededRng(matchSeed ^ 0xa55aa55a);
     this.state = createInitialGameState(matchSeed);
-    this.drawPreviewCardId = this.state.players.player.hand.at(-1) ?? null;
     this.resultPersisted = false;
 
     this.clearSelectedCard();
     this.aiCountdownMs = null;
+    this.aiSelectionCountdownMs = null;
     this.aiRevealCountdownMs = null;
     this.aiPendingAction = null;
+    this.aiSelectedHandIndex = null;
     this.clearEnemyCardReveal();
     this.gestureState.clear();
 
@@ -1288,7 +1512,8 @@ export class GameScene extends Phaser.Scene {
 
   private dispatch(action: Action): boolean {
     const previous = cloneGameState(this.state);
-    const playedCardOrigin = action.type === 'play_card' ? this.getCardWorldPosition(action.cardId, action.handIndex) : null;
+    const actionCardOrigin =
+      action.type === 'play_card' || action.type === 'discard_card' ? this.getActionCardOrigin(action) : null;
 
     const result = reduceGameState(this.state, action, this.rng);
     this.state = result.state;
@@ -1303,9 +1528,8 @@ export class GameScene extends Phaser.Scene {
       return false;
     }
 
-    this.updateDrawPreviewFromDiff(previous, this.state, action);
     this.updateHud();
-    this.emitFeedback(previous, this.state, action, playedCardOrigin);
+    this.emitFeedback(previous, this.state, action, actionCardOrigin);
 
     if (this.state.phase === 'ended') {
       this.handleMatchEnd();
@@ -1314,7 +1538,7 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
 
-  private emitFeedback(previous: GameState, next: GameState, action: Action, playedCardOrigin: Point | null): void {
+  private emitFeedback(previous: GameState, next: GameState, action: Action, actionCardOrigin: Point | null): void {
     const playerIds: PlayerId[] = ['player', 'ai'];
 
     for (const playerId of playerIds) {
@@ -1358,14 +1582,32 @@ export class GameScene extends Phaser.Scene {
       const handDelta = after.hand.length - before.hand.length;
       const deckDelta = after.deck.length - before.deck.length;
       if (handDelta > 0 || deckDelta < 0) {
-        this.animateDeckDraw();
+        this.animateDeckDraw(playerId);
+      }
+
+      if (before.deck.length === 0 && before.discard.length > 0 && after.discard.length < before.discard.length) {
+        this.animateDiscardReshuffle(playerId);
       }
     }
 
     if (action.type === 'play_card') {
-      const origin = playedCardOrigin ?? this.getActionOrigin(action);
+      const origin = actionCardOrigin ?? this.getActionOrigin(action);
       const target = this.getActionTarget(action, previous, next);
-      this.animateCardPlay(action.cardId, origin, target);
+      const discardTarget = this.getDiscardAnchor(action.playerId);
+      this.animateCardPlay(action.cardId, origin, target, () => {
+        this.animateCardToDiscard(action.cardId, target, discardTarget, {
+          owner: action.playerId,
+          facedown: false,
+        });
+      });
+      return;
+    }
+
+    if (action.type === 'discard_card' && actionCardOrigin) {
+      this.animateCardToDiscard(action.cardId, actionCardOrigin, this.getDiscardAnchor(action.playerId), {
+        owner: action.playerId,
+        facedown: action.playerId === 'ai',
+      });
     }
   }
 
@@ -1398,6 +1640,19 @@ export class GameScene extends Phaser.Scene {
     return { x: world.x, y: world.y };
   }
 
+  private getActionCardOrigin(action: Extract<Action, { type: 'play_card' | 'discard_card' }>): Point | null {
+    if (action.playerId === 'player') {
+      return this.getCardWorldPosition(action.cardId, action.handIndex);
+    }
+    if (action.type === 'play_card' && this.enemyCardRevealContainer) {
+      return this.getContainerWorldPosition(this.enemyCardRevealContainer);
+    }
+    if (this.aiSelectedHandIndex !== null) {
+      return this.getEnemyHandWorldPosition(this.aiSelectedHandIndex);
+    }
+    return null;
+  }
+
   private getActionOrigin(action: Extract<Action, { type: 'play_card' }>): Point {
     if (action.playerId === 'ai') {
       return {
@@ -1407,6 +1662,35 @@ export class GameScene extends Phaser.Scene {
     }
 
     return this.getPanelAnchor('player', 3);
+  }
+
+  private getDiscardAnchor(playerId: PlayerId): Point {
+    const pile = playerId === 'player' ? this.playerDiscardPile : this.aiDiscardPile;
+    return this.getContainerWorldPosition(pile.container);
+  }
+
+  private getDeckAnchor(playerId: PlayerId): Point {
+    if (playerId === 'player') {
+      return this.getContainerWorldPosition(this.playerDeckPile.container);
+    }
+    return {
+      x: this.enemyHand.container.x - this.enemyHand.width / 2 + (this.isNarrowLayout() ? 24 : 30),
+      y: this.enemyHand.container.y + (this.isNarrowLayout() ? 2 : 4),
+    };
+  }
+
+  private getEnemyHandWorldPosition(handIndex: number): Point | null {
+    const visual = this.enemyHandVisuals.find((entry) => entry.handIndex === handIndex);
+    if (!visual) {
+      return null;
+    }
+    return this.getContainerWorldPosition(visual.container);
+  }
+
+  private getContainerWorldPosition(container: Phaser.GameObjects.Container): Point {
+    const world = new Phaser.Math.Vector2();
+    container.getWorldTransformMatrix().transformPoint(0, 0, world);
+    return { x: world.x, y: world.y };
   }
 
   private getActionTarget(action: Extract<Action, { type: 'play_card' }>, previous: GameState, next: GameState): Point {
@@ -1450,16 +1734,17 @@ export class GameScene extends Phaser.Scene {
     return this.getTowerAnchor(actor);
   }
 
-  private animateDeckDraw(): void {
-    if (!this.deckCard) {
+  private animateDeckDraw(playerId: PlayerId): void {
+    const target = playerId === 'player' ? this.playerDeckPile.container : this.enemyHand.container;
+    if (!target) {
       return;
     }
 
-    this.tweens.killTweensOf(this.deckCard);
-    this.deckCard.setScale(1);
+    this.tweens.killTweensOf(target);
+    target.setScale(1);
 
     this.tweens.add({
-      targets: this.deckCard,
+      targets: target,
       scaleX: 0.82,
       scaleY: 1.12,
       yoyo: true,
@@ -1469,7 +1754,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private animateCardPlay(cardId: string, origin: Point, target: Point): void {
+  private animateCardPlay(cardId: string, origin: Point, target: Point, onComplete?: () => void): void {
     const card = CARD_BY_ID[cardId];
     if (!card) {
       return;
@@ -1481,32 +1766,7 @@ export class GameScene extends Phaser.Scene {
     beam.lineBetween(origin.x, origin.y, target.x, target.y);
     beam.setAlpha(this.animationsEnabled ? 0 : 0.34);
 
-    const clone = this.add.container(origin.x, origin.y);
-    const cloneShadow = this.add.rectangle(5, 7, 166, 88, 0x03070d, 0.35);
-    const cloneBody = this.add
-      .rectangle(0, 0, 166, 88, color, 0.96)
-      .setStrokeStyle(3, THEME.gold, 0.88);
-    const cloneText = this.add
-      .text(0, -8, card.name, {
-        fontFamily: FONT_FAMILY,
-        fontSize: '18px',
-        color: '#f4f0e8',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: 138 },
-      })
-      .setOrigin(0.5);
-    const cloneEffect = this.add
-      .text(0, 22, card.text, {
-        fontFamily: FONT_FAMILY,
-        fontSize: '12px',
-        color: '#ffe8c6',
-        align: 'center',
-        wordWrap: { width: 142 },
-      })
-      .setOrigin(0.5);
-
-    clone.add([cloneShadow, cloneBody, cloneText, cloneEffect]);
+    const clone = this.createMotionCard(cardId, origin, { facedown: false, compact: false });
     clone.setScale(this.animationsEnabled ? 0.8 : 1);
     this.overlayContainer.add([beam, clone]);
 
@@ -1514,6 +1774,7 @@ export class GameScene extends Phaser.Scene {
       clone.destroy(true);
       beam.destroy();
       this.spawnImpactBurst(target, color);
+      onComplete?.();
       return;
     }
 
@@ -1538,8 +1799,122 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => {
         clone.destroy(true);
         this.spawnImpactBurst(target, color);
+        onComplete?.();
       },
     });
+  }
+
+  private animateCardToDiscard(
+    cardId: string,
+    origin: Point,
+    target: Point,
+    options: { owner: PlayerId; facedown: boolean },
+  ): void {
+    const color = options.owner === 'player' ? THEME.playerBlack : THEME.enemyRed;
+    const clone = this.createMotionCard(cardId, origin, { facedown: options.facedown, compact: true });
+    this.overlayContainer.add(clone);
+
+    if (!this.animationsEnabled) {
+      clone.destroy(true);
+      this.spawnImpactBurst(target, color);
+      return;
+    }
+
+    this.tweens.add({
+      targets: clone,
+      x: target.x,
+      y: target.y,
+      scaleX: 0.48,
+      scaleY: 0.48,
+      alpha: 0.12,
+      duration: animDuration(420),
+      ease: 'Sine.InOut',
+      onComplete: () => {
+        clone.destroy(true);
+        this.spawnImpactBurst(target, color);
+      },
+    });
+  }
+
+  private animateDiscardReshuffle(playerId: PlayerId): void {
+    const origin = this.getDiscardAnchor(playerId);
+    const target = this.getDeckAnchor(playerId);
+    const clone = this.createMotionCard(null, origin, { facedown: true, compact: true });
+    this.overlayContainer.add(clone);
+
+    if (!this.animationsEnabled) {
+      clone.destroy(true);
+      return;
+    }
+
+    this.tweens.add({
+      targets: clone,
+      x: target.x,
+      y: target.y,
+      scaleX: 0.44,
+      scaleY: 0.44,
+      alpha: 0.08,
+      duration: animDuration(340),
+      ease: 'Sine.InOut',
+      onComplete: () => clone.destroy(true),
+    });
+  }
+
+  private createMotionCard(
+    cardId: string | null,
+    origin: Point,
+    options: { facedown: boolean; compact: boolean },
+  ): Phaser.GameObjects.Container {
+    const card = cardId ? CARD_BY_ID[cardId] : null;
+    const width = options.compact ? 96 : 166;
+    const height = options.compact ? 68 : 88;
+    const clone = this.add.container(origin.x, origin.y);
+    const cloneShadow = this.add.rectangle(5, 7, width, height, 0x03070d, options.compact ? 0.28 : 0.35);
+
+    if (options.facedown || !card) {
+      const cloneBody = this.add
+        .rectangle(0, 0, width, height, 0x283651, 0.98)
+        .setStrokeStyle(3, 0xd7dff3, 0.84);
+      const bandA = this.add.rectangle(0, -12, width * 0.54, 5, 0x6f86bc, 0.95);
+      const bandB = this.add.rectangle(0, 2, width * 0.5, 5, 0xd7dff3, 0.22);
+      const mark = this.add
+        .text(0, 16, '?', {
+          fontFamily: FONT_FAMILY,
+          fontSize: options.compact ? '16px' : '22px',
+          color: '#f4f0e8',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5);
+      clone.add([cloneShadow, cloneBody, bandA, bandB, mark]);
+      return clone;
+    }
+
+    const color = cardTypeColor(card.domain);
+    const cloneBody = this.add
+      .rectangle(0, 0, width, height, color, 0.96)
+      .setStrokeStyle(3, THEME.gold, 0.88);
+    const cloneText = this.add
+      .text(0, options.compact ? -4 : -8, card.name, {
+        fontFamily: FONT_FAMILY,
+        fontSize: options.compact ? '12px' : '18px',
+        color: '#f4f0e8',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: options.compact ? 74 : 138 },
+      })
+      .setOrigin(0.5);
+    const cloneEffect = this.add
+      .text(0, options.compact ? 16 : 22, options.compact ? `${RESOURCE_META[card.domain].resourceName} ${card.cost}` : card.text, {
+        fontFamily: FONT_FAMILY,
+        fontSize: options.compact ? '9px' : '12px',
+        color: '#ffe8c6',
+        align: 'center',
+        wordWrap: { width: options.compact ? 78 : 142 },
+      })
+      .setOrigin(0.5);
+
+    clone.add([cloneShadow, cloneBody, cloneText, cloneEffect]);
+    return clone;
   }
 
   private spawnImpactBurst(target: Point, color: number): void {
@@ -1627,14 +2002,39 @@ export class GameScene extends Phaser.Scene {
     const reveal = this.add.container(x, y, [shadow, frame, header, label, title, cost, text]);
     reveal.setDepth(55);
     reveal.setAlpha(this.animationsEnabled ? 0 : 1);
-    reveal.setScale(this.animationsEnabled ? 0.88 : 1);
+    reveal.setScale(1);
     this.overlayContainer.add(reveal);
     this.enemyCardRevealContainer = reveal;
 
-    this.turnLabelText.setText('Opponent plays');
-    this.statusText.setText(`AI reveals ${card.name}. Effects resolve shortly.`);
+    const origin = this.aiSelectedHandIndex !== null ? this.getEnemyHandWorldPosition(this.aiSelectedHandIndex) : null;
+    if (this.animationsEnabled && origin) {
+      const travel = this.createMotionCard(cardId, origin, { facedown: true, compact: true });
+      travel.setScale(0.74);
+      this.overlayContainer.add(travel);
+
+      this.tweens.add({
+        targets: travel,
+        x,
+        y,
+        scaleX: 0.3,
+        duration: animDuration(220),
+        ease: 'Sine.InOut',
+        onComplete: () => travel.destroy(true),
+      });
+      this.tweens.add({
+        targets: reveal,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        delay: animDelay(190),
+        duration: animDuration(180),
+        ease: 'Back.Out',
+      });
+      return;
+    }
 
     if (this.animationsEnabled) {
+      reveal.setScale(0.88);
       this.tweens.add({
         targets: reveal,
         alpha: 1,
@@ -1760,6 +2160,7 @@ export class GameScene extends Phaser.Scene {
       this.aiCountdownMs = AI_DELAY_MS;
     } else {
       this.aiCountdownMs = null;
+      this.aiSelectionCountdownMs = null;
     }
 
     this.updateHud();
@@ -1772,14 +2173,33 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      const pendingAction = this.aiPendingAction;
       this.aiRevealCountdownMs = null;
-      this.aiPendingAction = null;
-      this.clearEnemyCardReveal(true);
-
-      if (pendingAction && this.state.phase === 'playing') {
-        this.resolveAiAction(pendingAction);
+      if (this.aiPendingAction?.type === 'play_card' && this.state.phase === 'playing') {
+        this.resolveAiAction(this.aiPendingAction);
       }
+      return;
+    }
+
+    if (this.aiSelectionCountdownMs !== null) {
+      this.aiSelectionCountdownMs -= delta;
+      if (this.aiSelectionCountdownMs > 0) {
+        return;
+      }
+
+      this.aiSelectionCountdownMs = null;
+
+      if (!this.aiPendingAction || this.state.phase !== 'playing') {
+        return;
+      }
+
+      if (this.aiPendingAction.type === 'play_card') {
+        this.showEnemyCardReveal(this.aiPendingAction.cardId);
+        this.aiRevealCountdownMs = ENEMY_CARD_REVEAL_MS;
+        this.updateHud();
+        return;
+      }
+
+      this.resolveAiAction(this.aiPendingAction);
       return;
     }
 
@@ -1804,25 +2224,39 @@ export class GameScene extends Phaser.Scene {
         ? { type: 'play_card', playerId: 'ai', cardId: move.cardId }
         : { type: 'discard_card', playerId: 'ai', cardId: move.cardId };
 
-    if (action.type === 'play_card') {
-      this.aiPendingAction = action;
-      this.aiRevealCountdownMs = ENEMY_CARD_REVEAL_MS;
-      this.showEnemyCardReveal(action.cardId);
-      return;
-    }
-
-    this.resolveAiAction(action);
+    this.aiPendingAction = action;
+    this.aiSelectedHandIndex = this.resolveAiHandIndex(action.cardId);
+    this.aiSelectionCountdownMs = ENEMY_CARD_SELECTION_MS;
+    this.updateHud();
   }
 
   private resolveAiAction(action: Action): void {
     const ok = this.dispatch(action);
     if (!ok) {
+      this.aiPendingAction = null;
+      this.aiSelectedHandIndex = null;
+      this.aiSelectionCountdownMs = null;
+      this.aiRevealCountdownMs = null;
+      this.clearEnemyCardReveal(true);
+      this.updateHud();
       return;
     }
+
+    this.aiPendingAction = null;
+    this.aiSelectedHandIndex = null;
+    this.aiSelectionCountdownMs = null;
+    this.aiRevealCountdownMs = null;
+    this.clearEnemyCardReveal(true);
+    this.updateHud();
 
     if (this.dispatch({ type: 'end_turn' })) {
       this.progressLoop();
     }
+  }
+
+  private resolveAiHandIndex(cardId: string): number | null {
+    const index = this.state.players.ai.hand.indexOf(cardId);
+    return index === -1 ? null : index;
   }
 
   private onCardPointerDown(cardId: string, handIndex: number, pointer: Phaser.Input.Pointer): void {
@@ -2013,34 +2447,6 @@ export class GameScene extends Phaser.Scene {
     this.selectCardAt(handIndex);
   }
 
-  private updateDrawPreviewFromDiff(previous: GameState, next: GameState, action: Action): void {
-    const owner =
-      action.type === 'discard_card'
-        ? action.playerId
-        : action.type === 'end_turn'
-          ? previous.turn.current
-          : null;
-
-    if (owner !== 'player') {
-      return;
-    }
-
-    const beforeHand = previous.players.player.hand;
-    const afterHand = next.players.player.hand;
-    if (afterHand.length === 0) {
-      return;
-    }
-
-    if (action.type === 'discard_card') {
-      this.drawPreviewCardId = afterHand.at(-1) ?? this.drawPreviewCardId;
-      return;
-    }
-
-    if (action.type === 'end_turn' && afterHand.length > beforeHand.length) {
-      this.drawPreviewCardId = afterHand.at(-1) ?? this.drawPreviewCardId;
-    }
-  }
-
   private generatorUiName(generator: 'quarry' | 'barracks' | 'magic'): string {
     if (generator === 'quarry') {
       return 'Builders';
@@ -2085,55 +2491,24 @@ export class GameScene extends Phaser.Scene {
     return parts.slice(0, 2).join('\n');
   }
 
-  private updateDrawPreviewCard(): void {
-    if (!this.drawPreviewFrame) {
-      return;
-    }
-
-    const card = this.drawPreviewCardId ? CARD_BY_ID[this.drawPreviewCardId] : null;
-    const width = this.drawPreviewWidth;
-    const height = this.drawPreviewHeight;
-    const radius = this.isNarrowLayout() ? 6 : 8;
-
-    this.drawPreviewFrame.clear();
-    if (!card) {
-      this.drawPreviewFrame.fillStyle(0x30384a, 0.94);
-      this.drawPreviewFrame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
-      this.drawPreviewFrame.lineStyle(2, 0xd7dff3, 0.76);
-      this.drawPreviewFrame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
-      this.drawPreviewTitleText.setText('Draw');
-      this.drawPreviewEffectText.setText('Waiting');
-      this.drawPreviewCostText.setText('');
-      return;
-    }
-
-    const fill = mixColor(cardTypeColor(card.domain), THEME.parchment, 0.42);
-    this.drawPreviewFrame.fillStyle(fill, 0.98);
-    this.drawPreviewFrame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
-    this.drawPreviewFrame.lineStyle(2, cardTypeColor(card.domain), 0.98);
-    this.drawPreviewFrame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
-    this.drawPreviewFrame.fillStyle(0x1f2a39, 0.96);
-    this.drawPreviewFrame.fillCircle(width / 2 - (this.isNarrowLayout() ? 8 : 11), -height / 2 + (this.isNarrowLayout() ? 8 : 11), this.isNarrowLayout() ? 8 : 10);
-
-    this.drawPreviewTitleText.setText(card.name);
-    this.drawPreviewTitleText.setColor('#241d19');
-    this.drawPreviewEffectText.setText(this.formatCardEffectLine(card).replace('\n', ' / '));
-    this.drawPreviewEffectText.setColor('#3d352f');
-    this.drawPreviewCostText.setText(String(card.cost));
-  }
-
   private updateHud(): void {
     const player = this.state.players.player;
     const ai = this.state.players.ai;
     this.selectDefaultCard();
-
-    this.updateDrawPreviewCard();
-
-    this.opponentNameText.setText(`Red C${ai.tower} / W${ai.wall}`);
-    this.opponentTowerText.setText(`Goal ${this.state.winTower} | Deck ${player.deck.length}`);
+    this.updateTopPileViews();
+    this.rebuildEnemyHand();
+    this.topSummaryText.setText(`Goal ${this.state.winTower} | Red C${ai.tower} / W${ai.wall}`);
 
     const turnLabel =
-      this.state.phase === 'ended' ? 'Match Over' : this.state.turn.current === 'player' ? 'Your turn' : 'Opponent turn';
+      this.state.phase === 'ended'
+        ? 'Match Over'
+        : this.state.turn.current === 'player'
+          ? 'Your turn'
+          : this.aiRevealCountdownMs !== null
+            ? 'Opponent reveals'
+            : this.aiSelectionCountdownMs !== null
+              ? 'Opponent chooses'
+              : 'Opponent turn';
     this.turnLabelText.setText(turnLabel);
 
     const lastLogs = this.state.log.slice(-3);
@@ -2146,8 +2521,14 @@ export class GameScene extends Phaser.Scene {
           ? this.selectedCardId
             ? 'Click a full-color card to play. Discard cycles the selected card.'
             : 'Pick a card from the hand.'
-          : this.aiPendingAction
-            ? 'Opponent card revealed. Effects resolve next.'
+          : this.aiRevealCountdownMs !== null && this.aiPendingAction?.type === 'play_card'
+            ? `Red reveals ${CARD_BY_ID[this.aiPendingAction.cardId]?.name ?? 'a card'} before it resolves.`
+            : this.aiSelectionCountdownMs !== null && this.aiPendingAction
+              ? this.aiPendingAction.type === 'play_card'
+                ? 'Red is choosing one hidden card from hand.'
+                : 'Red is cycling one hidden card into discard.'
+              : this.aiPendingAction?.type === 'play_card'
+                ? 'Opponent card is resolving.'
             : 'Opponent is choosing a response.';
     this.statusText.setText(currentInstruction);
     this.battleFeedText.setText(lastLogs.length > 0 ? lastLogs.map((entry) => `- ${entry}`).join('\n') : 'No battle events yet.');
@@ -2196,7 +2577,7 @@ export class GameScene extends Phaser.Scene {
           : 'Enter plays selected | Backspace discards'
         : narrow
           ? 'Opponent turn'
-          : 'Opponent turn: watch the center stage',
+          : 'Opponent turn: watch the top strip',
     );
 
     this.rebuildHand();
@@ -2583,13 +2964,21 @@ export class GameScene extends Phaser.Scene {
   public renderGameState(): string {
     const payload = JSON.parse(summarizeForText(this.state)) as Record<string, unknown>;
     const selectedCard = this.selectedCardId ? CARD_BY_ID[this.selectedCardId] : null;
-    const drawPreviewCard = this.drawPreviewCardId ? CARD_BY_ID[this.drawPreviewCardId] : null;
     payload.ui = {
       activePlayer: this.state.turn.current,
-      revealedEnemyCardId: this.aiPendingAction?.type === 'play_card' ? this.aiPendingAction.cardId : null,
-      drawPreviewCardId: this.drawPreviewCardId,
-      drawPreviewCardName: drawPreviewCard?.name ?? null,
-      drawPreviewCardEffect: drawPreviewCard ? this.formatCardEffectLine(drawPreviewCard) : null,
+      playerDeckCount: this.state.players.player.deck.length,
+      playerDiscardCount: this.state.players.player.discard.length,
+      playerDiscardTopCardId: this.state.players.player.discard.at(-1) ?? null,
+      enemyDiscardCount: this.state.players.ai.discard.length,
+      enemyDiscardTopCardId: this.state.players.ai.discard.at(-1) ?? null,
+      enemyHiddenHandCount: this.state.players.ai.hand.length,
+      selectedEnemyHandIndex: this.aiSelectedHandIndex,
+      chosenEnemyCardId:
+        this.aiPendingAction?.type === 'play_card' || this.aiPendingAction?.type === 'discard_card'
+          ? this.aiPendingAction.cardId
+          : null,
+      revealedEnemyCardId:
+        this.aiRevealCountdownMs !== null && this.aiPendingAction?.type === 'play_card' ? this.aiPendingAction.cardId : null,
       selectedCardId: this.selectedCardId,
       selectedHandIndex: this.selectedHandIndex,
       selectedCardName: selectedCard?.name ?? null,

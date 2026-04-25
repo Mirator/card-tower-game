@@ -108,15 +108,24 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
+`render_game_to_text()` includes a `ui` block for the visible card-flow strip: draw deck count, player/enemy discard piles, hidden enemy hand count, and pending/revealed enemy card state.
+
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.
 
 ## Game screen
 The implemented UI uses:
-- Slim top turn bar with draw pile, latest drawn-card preview, current turn, enemy castle/wall, goal, deck count, and turn chips
+- Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, and turn chips
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
-- Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, and impact feedback
+- Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
 - Bottom cockpit with 6 visible hand cards, selected-card preview, explicit Play/Discard buttons, compact battle feed, and minimal controls hint
 - No turn timer in v1
+
+Card flow behavior:
+- Played cards and manual discards go into that side's discard pile at the top
+- The player draw pile shows the remaining visible deck count
+- The enemy hand is shown as hidden card backs throughout the match
+- On AI turns, one hidden enemy card is highlighted before it is revealed or discarded
+- When a discard pile reshuffles back into draw, the top-strip pile visuals update to match
 
 Card/resource color language:
 - Bricks use sandstone / ochre

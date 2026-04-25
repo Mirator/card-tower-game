@@ -7,7 +7,7 @@
 - GameScene: main gameplay, layout, input, animation, AI turn pacing, rematch flow, and automation bridge
 
 ### GameScene structure
-- Slim top turn bar: deck card, active turn headline, enemy tower/wall summary, goal, deck count, and turn chips
+- Slim top card-flow bar: player draw pile, player discard pile, active turn headline, goal + enemy tower/wall summary, enemy discard pile, hidden enemy hand, and turn chips
 - Side panels: Player A and Player B resources, generators, tower, and wall
 - Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and enemy card reveal
 - Bottom cockpit: player hand, selected-card preview, Play/Discard command panel, compact battle feed, and control hint
@@ -63,5 +63,7 @@ When exposed for validation, the app provides:
 - `window.render_game_to_text(): string`
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
+
+`render_game_to_text()` includes a `ui` block describing top-strip card flow state such as visible draw deck count, player/enemy discard piles, hidden enemy hand count, and pending/revealed enemy card ids for automation checks.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.

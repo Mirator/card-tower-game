@@ -93,3 +93,9 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Brightened disabled card fills, borders, badge colors, and muted icon/text colors so the rightmost unplayable card remains readable against the dark hand surface.
 - Updated the UI spec, root GDD, and README to describe the revised color semantics.
 - Verified with `npm run lint`, `npm test`, `npm run build`, and a fresh Playwright smoke pass on `http://127.0.0.1:4173` with artifacts in `output/palette-smoke/`.
+
+## Card Flow + Enemy Hand Refresh
+- Replaced the old top draw-preview HUD with a card-flow strip showing the `Black` draw pile, both discard piles, center turn/goal summary, and a persistent hidden `Red` hand.
+- Added enemy turn staging so the AI visibly selects one hidden card before revealing it to the center stage or cycling it into discard.
+- Routed played cards and discards into the top discard piles visually, and added reshuffle feedback when discard loops back into draw.
+- Extended `render_game_to_text()` so automation can inspect deck/discard counts, discard top cards, hidden enemy hand state, and pending/revealed AI card state.
