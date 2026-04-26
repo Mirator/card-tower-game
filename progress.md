@@ -124,3 +124,11 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added drag-to-center play and drag-down discard while keeping click-to-play, right-click discard, and keyboard shortcuts as secondary inputs.
 - Added dev-state fields `hoverPreviewCardId` and `draggingCardId` to `render_game_to_text().ui` for smoke-test visibility into the transient tray interactions.
 - Updated the UI docs and README to describe the drag-first bottom tray.
+
+## Hand Visibility Audit Fix
+- Audited the “missing cards” report and confirmed it was a HUD rendering bug, not a deck/refill bug: player state still held 6 cards while repeated `updateHud()` calls kept restarting full-hand fade-ins from alpha 0.
+- Split player-hand syncing away from the general HUD refresh so routine AI/tower/top-strip updates no longer destroy and recreate the tray.
+- Added stable hand sync keys for hand contents, affordability state, layout, and selected slot; same-hand updates now refresh existing card visuals in place instead of rebuilding them.
+- Reworked hand entry animation so card arrivals use a subtle position/scale settle without dropping card alpha below the intended visible value, preventing partial-hand flashes on turn return.
+- Added `renderedHandCardCount` and `fullyVisibleHandCardCount` to `render_game_to_text().ui` for deterministic visibility checks.
+- Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game Playwright client (`output/hand-visibility-client/`), and custom desktop/mobile turn-transition captures in `output/hand-visibility-regression/`; desktop/mobile return-to-player frames now report and show 6 visible cards.

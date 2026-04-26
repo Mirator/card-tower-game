@@ -53,4 +53,4 @@ When exposed on `window`:
 - `advanceTime(ms: number): void`
 - `__game.interact(): void` (automation helper: plays first affordable player card)
 
-The `render_game_to_text()` payload includes a `ui` block with visible deck/discard counts plus presentation fields such as `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, and `draggingCardId`.
+The `render_game_to_text()` payload includes a `ui` block with visible deck/discard counts plus presentation fields such as `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, `draggingCardId`, `renderedHandCardCount`, and `fullyVisibleHandCardCount`.

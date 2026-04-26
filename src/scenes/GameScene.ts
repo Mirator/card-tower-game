@@ -45,12 +45,21 @@ interface CardVisual {
   handIndex: number;
   container: Phaser.GameObjects.Container;
   frame: Phaser.GameObjects.Graphics;
+  resourceIcon: Phaser.GameObjects.Graphics;
+  titleText: Phaser.GameObjects.Text;
+  costText: Phaser.GameObjects.Text;
+  illustration: Phaser.GameObjects.Graphics;
+  effectText: Phaser.GameObjects.Text;
+  hitArea: Phaser.GameObjects.Rectangle;
   width: number;
   height: number;
   domain: Resource;
   affordable: boolean;
   baseX: number;
   baseY: number;
+  targetAlpha: number;
+  iconSize: number;
+  illustrationSize: number;
 }
 
 interface TopPileRefs {
@@ -257,19 +266,11 @@ function paintCardFrame(
   }
 }
 
-function createResourceIcon(
-  scene: Phaser.Scene,
-  resource: Resource,
-  x: number,
-  y: number,
-  size: number,
-  muted: boolean,
-): Phaser.GameObjects.Graphics {
+function drawResourceIcon(graphics: Phaser.GameObjects.Graphics, resource: Resource, size: number, muted: boolean): void {
   const color = muted ? 0x9ba0a8 : cardTypeColor(resource);
   const accent = muted ? 0xc1c5cc : mixColor(color, 0xffffff, 0.34);
   const shadow = muted ? 0x5e6168 : mixColor(color, 0x000000, 0.46);
-  const graphics = scene.add.graphics();
-  graphics.setPosition(x, y);
+  graphics.clear();
 
   if (resource === 'bricks') {
     graphics.fillStyle(shadow, 0.42);
@@ -282,7 +283,7 @@ function createResourceIcon(
     graphics.fillTriangle(-size * 0.22, -size * 0.16, 0, -size * 0.02, 0, -size * 0.32);
     graphics.fillStyle(mixColor(color, 0x000000, 0.12), 1);
     graphics.fillTriangle(0, -size * 0.32, size * 0.22, -size * 0.16, 0, -size * 0.02);
-    return graphics;
+    return;
   }
 
   if (resource === 'weapons') {
@@ -294,7 +295,7 @@ function createResourceIcon(
     graphics.fillTriangle(size * 0.22, -size * 0.34, size * 0.46, -size * 0.48, size * 0.36, -size * 0.18);
     graphics.lineStyle(Math.max(1, size * 0.09), accent, 1);
     graphics.lineBetween(-size * 0.4, size * 0.08, -size * 0.12, size * 0.36);
-    return graphics;
+    return;
   }
 
   graphics.fillStyle(shadow, 0.3);
@@ -305,6 +306,19 @@ function createResourceIcon(
   graphics.fillTriangle(0, -size * 0.5, -size * 0.42, 0, 0, size * 0.5);
   graphics.lineStyle(Math.max(1, size * 0.08), accent, 0.9);
   graphics.lineBetween(0, -size * 0.35, 0, size * 0.32);
+}
+
+function createResourceIcon(
+  scene: Phaser.Scene,
+  resource: Resource,
+  x: number,
+  y: number,
+  size: number,
+  muted: boolean,
+): Phaser.GameObjects.Graphics {
+  const graphics = scene.add.graphics();
+  graphics.setPosition(x, y);
+  drawResourceIcon(graphics, resource, size, muted);
   return graphics;
 }
 
@@ -336,21 +350,17 @@ function getCardIllustration(card: CardDefinition): CardIllustrationKey {
   return card.domain === 'crystals' ? 'crystal' : card.domain === 'weapons' ? 'sword' : 'wall';
 }
 
-function createIllustrationIcon(
-  scene: Phaser.Scene,
+function drawIllustrationIcon(
+  graphics: Phaser.GameObjects.Graphics,
   illustration: CardIllustrationKey,
-  x: number,
-  y: number,
   size: number,
   color: number,
   muted: boolean,
-): Phaser.GameObjects.Graphics {
-  const graphics = scene.add.graphics();
-  graphics.setPosition(x, y);
-
+): void {
   const main = muted ? 0x9ea2a8 : mixColor(color, 0xffffff, 0.22);
   const light = muted ? 0xc4c7cc : mixColor(main, 0xffffff, 0.36);
   const dark = muted ? 0x64686f : mixColor(color, 0x000000, 0.28);
+  graphics.clear();
 
   graphics.fillStyle(0x000000, muted ? 0.06 : 0.16);
   graphics.fillEllipse(size * 0.06, size * 0.22, size * 0.84, size * 0.26);
@@ -545,6 +555,20 @@ function createIllustrationIcon(
     }
   }
 
+}
+
+function createIllustrationIcon(
+  scene: Phaser.Scene,
+  illustration: CardIllustrationKey,
+  x: number,
+  y: number,
+  size: number,
+  color: number,
+  muted: boolean,
+): Phaser.GameObjects.Graphics {
+  const graphics = scene.add.graphics();
+  graphics.setPosition(x, y);
+  drawIllustrationIcon(graphics, illustration, size, color, muted);
   return graphics;
 }
 
@@ -626,6 +650,11 @@ export class GameScene extends Phaser.Scene {
 
   private cardVisuals: CardVisual[] = [];
   private gestureState = new Map<number, GestureState>();
+  private lastHandRenderKey = '';
+  private lastHandAffordabilityKey = '';
+  private lastHandLayoutKey = '';
+  private lastHandSelectionKey = '';
+  private handAllowEntryAnimation = false;
 
   private selectedCardId: string | null = null;
   private selectedHandIndex: number | null = null;
@@ -700,6 +729,11 @@ export class GameScene extends Phaser.Scene {
     this.topStageCardId = null;
     this.hoverPreviewCardId = null;
     this.draggingCardId = null;
+    this.lastHandRenderKey = '';
+    this.lastHandAffordabilityKey = '';
+    this.lastHandLayoutKey = '';
+    this.lastHandSelectionKey = '';
+    this.handAllowEntryAnimation = false;
 
     this.backgroundContainer?.destroy(true);
     this.topCenterContainer?.destroy(true);
@@ -1648,6 +1682,11 @@ export class GameScene extends Phaser.Scene {
     this.aiSelectedHandIndex = null;
     this.topStageMode = 'compact';
     this.topStageCardId = null;
+    this.lastHandRenderKey = '';
+    this.lastHandAffordabilityKey = '';
+    this.lastHandLayoutKey = '';
+    this.lastHandSelectionKey = '';
+    this.handAllowEntryAnimation = true;
     this.clearEnemyCardReveal();
     this.gestureState.clear();
 
@@ -2595,7 +2634,7 @@ export class GameScene extends Phaser.Scene {
   private restoreCardVisual(entry: CardVisual): void {
     this.tweens.killTweensOf(entry.container);
     const selected = entry.handIndex === this.selectedHandIndex && entry.affordable;
-    entry.container.setAlpha(entry.affordable ? 1 : 0.76);
+    entry.container.setAlpha(entry.targetAlpha);
     if (this.animationsEnabled) {
       this.tweens.add({
         targets: entry.container,
@@ -2952,6 +2991,88 @@ export class GameScene extends Phaser.Scene {
     return parts.slice(0, 2).join('\n');
   }
 
+  private getHandRenderKey(): string {
+    return this.state.players.player.hand.join('|');
+  }
+
+  private getHandAffordabilityKey(): string {
+    return this.state.players.player.hand
+      .map((cardId, index) => `${index}:${canAffordCard(this.state, 'player', cardId) ? 1 : 0}`)
+      .join('|');
+  }
+
+  private getHandLayoutKey(): string {
+    return [
+      this.bottomHudLayoutMode,
+      Math.round(this.handLaneWidth),
+      Math.round(this.handCardsContainer?.x ?? 0),
+      Math.round(this.handCardsContainer?.y ?? 0),
+      Math.round(this.scale.width),
+      Math.round(this.scale.height),
+    ].join(':');
+  }
+
+  private refreshHandVisualState(): void {
+    this.cardVisuals.forEach((entry) => {
+      const card = CARD_BY_ID[entry.cardId];
+      if (!card) {
+        return;
+      }
+
+      const affordable = canAffordCard(this.state, 'player', entry.cardId);
+      const muted = !affordable;
+      entry.affordable = affordable;
+      entry.targetAlpha = affordable ? 1 : 0.76;
+
+      entry.titleText.setColor(cardTitleHex(entry.domain, affordable));
+      entry.costText.setColor(muted ? '#746a61' : '#12100e');
+      entry.effectText.setColor(muted ? '#635b54' : '#24201c');
+      paintCardFrame(entry.frame, entry.width, entry.height, entry.domain, affordable, entry.handIndex === this.selectedHandIndex && affordable);
+      drawResourceIcon(entry.resourceIcon, entry.domain, entry.iconSize, muted);
+      drawIllustrationIcon(entry.illustration, getCardIllustration(card), entry.illustrationSize, cardTypeColor(entry.domain), muted);
+
+      if (entry.hitArea.input) {
+        entry.hitArea.input.cursor = affordable ? 'pointer' : 'default';
+      }
+      if (this.draggingCardId !== entry.cardId) {
+        entry.container.setAlpha(entry.targetAlpha);
+      }
+    });
+  }
+
+  private syncHandView(): void {
+    const renderKey = this.getHandRenderKey();
+    const affordabilityKey = this.getHandAffordabilityKey();
+    const layoutKey = this.getHandLayoutKey();
+    const selectionKey = `${this.selectedHandIndex ?? -1}`;
+    const handChanged = this.lastHandRenderKey !== renderKey;
+    const layoutChanged = this.lastHandLayoutKey !== layoutKey;
+    const needsStructuralSync = this.cardVisuals.length !== this.state.players.player.hand.length || handChanged || layoutChanged;
+
+    if (needsStructuralSync) {
+      const animateEntry = this.handAllowEntryAnimation || (this.lastHandRenderKey !== '' && handChanged);
+      this.rebuildHand(animateEntry);
+      this.lastHandRenderKey = renderKey;
+      this.lastHandAffordabilityKey = affordabilityKey;
+      this.lastHandLayoutKey = layoutKey;
+      this.lastHandSelectionKey = selectionKey;
+      this.handAllowEntryAnimation = false;
+      this.refreshCardSelection();
+      return;
+    }
+
+    const affordabilityChanged = this.lastHandAffordabilityKey !== affordabilityKey;
+    if (affordabilityChanged) {
+      this.refreshHandVisualState();
+      this.lastHandAffordabilityKey = affordabilityKey;
+    }
+
+    if (affordabilityChanged || this.lastHandSelectionKey !== selectionKey) {
+      this.refreshCardSelection();
+      this.lastHandSelectionKey = selectionKey;
+    }
+  }
+
   private updateHud(): void {
     const player = this.state.players.player;
     const ai = this.state.players.ai;
@@ -3037,6 +3158,14 @@ export class GameScene extends Phaser.Scene {
     this.updateTowerPressure(this.playerTowerVisual, player.tower, player.wall, this.state.winTower);
     this.updateTowerPressure(this.aiTowerVisual, ai.tower, ai.wall, this.state.winTower);
 
+    if (this.aiRevealCountdownMs !== null && this.aiPendingAction?.type === 'play_card') {
+      if (!this.enemyCardRevealContainer || this.topStageCardId !== this.aiPendingAction.cardId) {
+        this.showEnemyCardReveal(this.aiPendingAction.cardId);
+      }
+    } else if (this.enemyCardRevealContainer && this.aiPendingAction?.type !== 'play_card') {
+      this.clearEnemyCardReveal();
+    }
+
     this.handHintText.setText(
       this.state.turn.current === 'player'
         ? narrow
@@ -3049,7 +3178,7 @@ export class GameScene extends Phaser.Scene {
 
     this.hideCardHoverPreview();
     this.hideDragGuide();
-    this.rebuildHand();
+    this.syncHandView();
 
     if (this.state.phase === 'ended') {
       this.endOverlayText.setText(this.state.winner === 'player' ? 'Victory' : 'Defeat');
@@ -3087,7 +3216,7 @@ export class GameScene extends Phaser.Scene {
     tower.dangerGlow.setAlpha(danger ? 0.18 : 0);
   }
 
-  private rebuildHand(): void {
+  private rebuildHand(animateEntry = false): void {
     this.cardVisuals.forEach((entry) => entry.container.destroy());
     this.cardVisuals = [];
 
@@ -3115,6 +3244,7 @@ export class GameScene extends Phaser.Scene {
       const x = startX + index * (cardWidth + gap);
       const y = 0;
       const affordable = canAffordCard(this.state, 'player', cardId);
+      const targetAlpha = affordable ? 1 : 0.76;
       const muted = !affordable;
       const cardPadding = ultraCompact ? 6 : compact ? 8 : 12;
       const isSelected = this.selectedHandIndex === index;
@@ -3126,7 +3256,7 @@ export class GameScene extends Phaser.Scene {
       const effectText = this.formatCardEffectLine(card);
 
       const container = this.add.container(x, y);
-      container.setAlpha(affordable ? 1 : 0.76);
+      container.setAlpha(targetAlpha);
       container.setY(emphasized ? -12 : 0);
       container.setScale(emphasized ? 1.04 : 1);
       const frame = this.add.graphics();
@@ -3205,13 +3335,15 @@ export class GameScene extends Phaser.Scene {
       container.add([frame, resourceIcon, title, costShadow, costText, illustration, effect, hit]);
       this.handCardsContainer.add(container);
 
-      if (this.animationsEnabled) {
-        container.setAlpha(0);
+      if (this.animationsEnabled && animateEntry) {
+        container.setY((emphasized ? -12 : 0) + 14);
+        container.setScale((emphasized ? 1.04 : 1) * 0.97);
         this.tweens.add({
           targets: container,
-          alpha: affordable ? 1 : 0.76,
-          y: container.y,
-          duration: animDuration(180),
+          y: emphasized ? -12 : 0,
+          scaleX: emphasized ? 1.04 : 1,
+          scaleY: emphasized ? 1.04 : 1,
+          duration: animDuration(160),
           delay: animDelay(index * 24),
           ease: 'Sine.Out',
         });
@@ -3222,12 +3354,21 @@ export class GameScene extends Phaser.Scene {
         handIndex: index,
         container,
         frame,
+        resourceIcon,
+        titleText: title,
+        costText,
+        illustration,
+        effectText: effect,
+        hitArea: hit,
         width: cardWidth,
         height: cardHeight,
         domain: card.domain,
         affordable,
         baseX: x,
         baseY: y,
+        targetAlpha,
+        iconSize,
+        illustrationSize,
       });
     });
   }
@@ -3403,6 +3544,8 @@ export class GameScene extends Phaser.Scene {
       selectedCardImpact: selectedCard ? this.formatCardEffectLine(selectedCard) : null,
       hoverPreviewCardId: this.hoverPreviewCardId,
       draggingCardId: this.draggingCardId,
+      renderedHandCardCount: this.cardVisuals.length,
+      fullyVisibleHandCardCount: this.cardVisuals.filter((entry) => Math.abs(entry.container.alpha - entry.targetAlpha) < 0.02).length,
       bottomHudLayout: this.bottomHudLayoutMode,
       topStageMode: this.topStageMode,
       topStageCardId: this.topStageCardId,

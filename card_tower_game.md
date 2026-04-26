@@ -108,7 +108,7 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
-`render_game_to_text()` includes a `ui` block for the visible card-flow strip and refined HUD presentation: draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card state, `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, and `draggingCardId`.
+`render_game_to_text()` includes a `ui` block for the visible card-flow strip and refined HUD presentation: draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card state, `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, `draggingCardId`, `renderedHandCardCount`, and `fullyVisibleHandCardCount`.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.
 
