@@ -117,7 +117,7 @@ The implemented UI uses:
 - Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, turn chips, and a reveal-focused top stage that appears during enemy card moments
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
 - Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
-- Bottom cockpit with a centered 6-card portrait hand tray, transient hover/drag card detail, drag-to-center play, drag-down discard, and a minimal controls hint
+- Bottom cockpit with a vertically centered 6-card portrait hand tray, transient hover/drag card detail, drag-to-center play, drag-down discard, and a minimal controls hint
 - No turn timer in v1
 
 Card flow behavior:
@@ -142,7 +142,7 @@ Hand-card visual language:
 - Oversized cost number in the upper-right corner
 - Centered title and simple-but-specific icon illustration chosen from explicit visual keys on the active deck cards
 - Short bottom effect text with a clear selected-card gold highlight
-- Disabled cards use a darker neutral paper face with a gray border instead of a bright tinted one
+- Disabled cards use a softer neutral paper face with a gray border instead of a bright tinted one
 - Disabled cards stay readable for inspection, but they do not lift or glow like playable cards
 - The hand row sits slightly higher in the bottom band so the cards feel centered in the cockpit area
 

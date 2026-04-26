@@ -133,6 +133,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added `renderedHandCardCount` and `fullyVisibleHandCardCount` to `render_game_to_text().ui` for deterministic visibility checks.
 - Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game Playwright client (`output/hand-visibility-client/`), and custom desktop/mobile turn-transition captures in `output/hand-visibility-regression/`; desktop/mobile return-to-player frames now report and show 6 visible cards.
 
+## Hand Tray Polish
+- Re-centered the player hand cards vertically inside the bottom tray instead of letting the row sit too low against the controls hint.
+- Softened the disabled-card treatment by lightening the neutral paper face, easing the gray border/seam contrast, and raising disabled card alpha so unaffordable cards remain readable while still clearly inactive.
+
 ## Audit Fix Implementation
 - Hardened local meta persistence so blocked/quota-limited `localStorage.setItem` calls no longer crash menu toggles or match-end stat updates.
 - Removed the undocumented `window.__phaserGame` automation global; committed hooks now match the documented `render_game_to_text`, `advanceTime`, and scene-owned `__game.interact` surface.

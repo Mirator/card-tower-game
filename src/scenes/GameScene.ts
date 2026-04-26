@@ -194,7 +194,7 @@ function mixColor(from: number, to: number, amount: number): number {
 
 function cardPaperColor(domain: Resource, affordable: boolean): number {
   if (!affordable) {
-    return 0x928981;
+    return 0xa49d96;
   }
   if (domain === 'bricks') {
     return 0xf0e0b8;
@@ -207,7 +207,7 @@ function cardPaperColor(domain: Resource, affordable: boolean): number {
 
 function cardTitleHex(domain: Resource, affordable: boolean): string {
   if (!affordable) {
-    return '#58575d';
+    return '#605a55';
   }
   if (domain === 'bricks') {
     return '#8b6523';
@@ -219,7 +219,7 @@ function cardTitleHex(domain: Resource, affordable: boolean): string {
 }
 
 function cardFillColor(domain: Resource, affordable: boolean): number {
-  return affordable ? cardPaperColor(domain, true) : 0x877f78;
+  return affordable ? cardPaperColor(domain, true) : 0x979089;
 }
 
 function cardBorderColor(domain: Resource, affordable: boolean, selected: boolean): number {
@@ -238,11 +238,11 @@ function paintCardFrame(
   selected: boolean,
 ): void {
   const radius = Math.min(16, Math.max(8, Math.round(width * 0.1)));
-  const outerColor = affordable ? cardTypeColor(domain) : 0x7d838b;
+  const outerColor = affordable ? cardTypeColor(domain) : 0x8c929a;
   const paperColor = cardFillColor(domain, affordable);
   const innerColor = affordable ? mixColor(paperColor, 0xffffff, 0.18) : mixColor(paperColor, 0x000000, 0.08);
-  const insetStroke = affordable ? mixColor(outerColor, 0xffffff, 0.62) : 0xc0c6cf;
-  const seamColor = affordable ? mixColor(outerColor, 0x000000, 0.26) : 0x565b63;
+  const insetStroke = affordable ? mixColor(outerColor, 0xffffff, 0.62) : 0xd0d6df;
+  const seamColor = affordable ? mixColor(outerColor, 0x000000, 0.26) : 0x676d75;
   frame.clear();
   frame.fillStyle(0x02050c, 0.3);
   frame.fillRoundedRect(-width / 2 + 6, -height / 2 + 9, width, height, radius + 1);
@@ -250,11 +250,11 @@ function paintCardFrame(
     frame.fillStyle(THEME.gold, 0.22);
     frame.fillRoundedRect(-width / 2 - 4, -height / 2 - 4, width + 8, height + 8, radius + 4);
   }
-  frame.fillStyle(outerColor, affordable ? 0.98 : 0.84);
+  frame.fillStyle(outerColor, affordable ? 0.98 : 0.9);
   frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
   frame.fillStyle(seamColor, affordable ? 0.16 : 0.2);
   frame.fillRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, height - 6, Math.max(4, radius - 2));
-  frame.fillStyle(paperColor, affordable ? 1 : 0.94);
+  frame.fillStyle(paperColor, affordable ? 1 : 0.97);
   frame.fillRoundedRect(-width / 2 + 6, -height / 2 + 6, width - 12, height - 12, Math.max(4, radius - 4));
   frame.fillStyle(innerColor, affordable ? 0.62 : 0.68);
   frame.fillRoundedRect(-width / 2 + 12, -height / 2 + 12, width - 24, height - 24, Math.max(4, radius - 8));
@@ -1526,13 +1526,17 @@ export class GameScene extends Phaser.Scene {
     const narrow = this.isNarrowLayout(width);
     const panelHeight = narrow ? Math.max(192, Math.min(228, height * 0.29)) : Math.max(212, Math.min(246, height * 0.28));
     const panelTop = height - panelHeight - 10;
+    const hintBottomInset = narrow ? 12 : 14;
+    const hintReserve = narrow ? 40 : 28;
+    const laneTopInset = narrow ? 16 : 18;
+    const laneBottomInset = hintReserve + (narrow ? 8 : 6);
 
     this.handSurface = this.add
       .rectangle(width / 2, panelTop + panelHeight / 2, width - 20, panelHeight, 0x211a14, 0.93)
       .setStrokeStyle(2, THEME.gold, 0.65);
 
     this.handHintText = this.add
-      .text(width / 2, panelTop + panelHeight - 14, narrow ? 'Drag to center to play\nDrag down to discard' : 'Click to play | Drag to center to play | Drag down to discard', {
+      .text(width / 2, panelTop + panelHeight - hintBottomInset, narrow ? 'Drag to center to play\nDrag down to discard' : 'Click to play | Drag to center to play | Drag down to discard', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '9px' : '11px',
         color: '#b9c6db',
@@ -1543,7 +1547,9 @@ export class GameScene extends Phaser.Scene {
     this.bottomHudLayoutMode = narrow ? 'stacked-mobile' : 'card-only';
     this.handLaneCenterX = width / 2;
     this.handLaneWidth = Math.max(220, width - (narrow ? 28 : 76));
-    this.handCardsContainer = this.add.container(this.handLaneCenterX, panelTop + panelHeight - (narrow ? 64 : 94));
+    const handLaneTop = panelTop + laneTopInset;
+    const handLaneBottom = panelTop + panelHeight - laneBottomInset;
+    this.handCardsContainer = this.add.container(this.handLaneCenterX, Math.round((handLaneTop + handLaneBottom) / 2));
 
     this.handContainer.add([this.handSurface, this.handHintText, this.handCardsContainer]);
   }
@@ -3022,11 +3028,11 @@ export class GameScene extends Phaser.Scene {
       const affordable = canAffordCard(this.state, 'player', entry.cardId);
       const muted = !affordable;
       entry.affordable = affordable;
-      entry.targetAlpha = affordable ? 1 : 0.76;
+      entry.targetAlpha = affordable ? 1 : 0.84;
 
       entry.titleText.setColor(cardTitleHex(entry.domain, affordable));
-      entry.costText.setColor(muted ? '#746a61' : '#12100e');
-      entry.effectText.setColor(muted ? '#635b54' : '#24201c');
+      entry.costText.setColor(muted ? '#685f58' : '#12100e');
+      entry.effectText.setColor(muted ? '#5c5650' : '#24201c');
       paintCardFrame(entry.frame, entry.width, entry.height, entry.domain, affordable, entry.handIndex === this.selectedHandIndex && affordable);
       drawResourceIcon(entry.resourceIcon, entry.domain, entry.iconSize, muted);
       drawIllustrationIcon(entry.illustration, getCardIllustration(card), entry.illustrationSize, cardTypeColor(entry.domain), muted);
@@ -3244,7 +3250,7 @@ export class GameScene extends Phaser.Scene {
       const x = startX + index * (cardWidth + gap);
       const y = 0;
       const affordable = canAffordCard(this.state, 'player', cardId);
-      const targetAlpha = affordable ? 1 : 0.76;
+      const targetAlpha = affordable ? 1 : 0.84;
       const muted = !affordable;
       const cardPadding = ultraCompact ? 6 : compact ? 8 : 12;
       const isSelected = this.selectedHandIndex === index;
@@ -3295,7 +3301,7 @@ export class GameScene extends Phaser.Scene {
         .text(cardWidth / 2 - cardPadding - 2, -cardHeight / 2 + cardPadding - 2, String(card.cost), {
           fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '12px' : compact ? '16px' : '22px',
-          color: muted ? '#746a61' : '#12100e',
+          color: muted ? '#685f58' : '#12100e',
           fontStyle: 'bold',
         })
         .setOrigin(1, 0);
@@ -3314,7 +3320,7 @@ export class GameScene extends Phaser.Scene {
         .text(0, cardHeight / 2 - (ultraCompact ? 16 : compact ? 22 : 28), ultraCompact ? '' : effectText, {
           fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '8px' : compact ? '10px' : '13px',
-          color: muted ? '#635b54' : '#24201c',
+          color: muted ? '#5c5650' : '#24201c',
           align: 'center',
           wordWrap: { width: Math.max(30, cardWidth - cardPadding * 2) },
         })
