@@ -99,3 +99,13 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Added enemy turn staging so the AI visibly selects one hidden card before revealing it to the center stage or cycling it into discard.
 - Routed played cards and discards into the top discard piles visually, and added reshuffle feedback when discard loops back into draw.
 - Extended `render_game_to_text()` so automation can inspect deck/discard counts, discard top cards, hidden enemy hand state, and pending/revealed AI card state.
+
+## Card Face Style Pass
+- Reworked the player hand cards from wide UI tiles into taller portrait cards with thick domain borders, paper-style inner panels, corner resource icons, large top-right costs, centered illustrations, and lower anchored effect text.
+- Updated the enemy reveal card to use the same portrait card language so the AI turn presentation matches the player hand.
+- Verified the new card-face treatment with `npm run lint`, `npm test`, `npm run build`, and a fresh Playwright smoke capture on `http://127.0.0.1:4173`.
+
+## Card Lane Polish
+- Raised the hand row so the portrait cards sit higher and feel more centered in the bottom cockpit.
+- Removed the visible battle/event feed from the lower HUD; floating feedback and the top turn strip now carry the moment-to-moment state changes.
+- Restyled disabled cards with darker neutral paper faces, gray borders, dimmer icons, and slightly reduced opacity so they read as unavailable without blending into the tray.

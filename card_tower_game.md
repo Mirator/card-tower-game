@@ -117,7 +117,7 @@ The implemented UI uses:
 - Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, and turn chips
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
 - Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
-- Bottom cockpit with 6 visible hand cards, selected-card preview, explicit Play/Discard buttons, compact battle feed, and minimal controls hint
+- Bottom cockpit with 6 visible portrait hand cards, selected-card preview, explicit Play/Discard buttons, and a minimal controls hint
 - No turn timer in v1
 
 Card flow behavior:
@@ -133,6 +133,21 @@ Card/resource color language:
 - Crystals use blue
 - Neutral grey is reserved for disabled cards
 - Green remains a positive-state accent rather than the identity color for attack cards
+
+Hand-card visual language:
+- Thick rounded domain border around each card face
+- Light paper-style inner panel instead of a flat tile fill
+- Small resource icon in the upper-left corner
+- Oversized cost number in the upper-right corner
+- Centered title and simple icon illustration
+- Short bottom effect text with a clear selected-card gold highlight
+- Disabled cards use a darker neutral paper face with a gray border instead of a bright tinted one
+- The hand row sits slightly higher in the bottom band so the cards feel centered in the cockpit area
+
+Bottom HUD behavior:
+- No visible scrolling or persistent event log
+- Turn guidance stays in the top strip, while short card details stay in the selected-card panel
+- Combat/resource changes are communicated through animation, floating text, and discard/reveal motion instead of a text feed
 
 Controls:
 - Left click a playable card: play it immediately

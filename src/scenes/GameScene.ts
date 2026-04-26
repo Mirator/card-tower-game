@@ -184,15 +184,41 @@ function mixColor(from: number, to: number, amount: number): number {
   return (red << 16) | (green << 8) | blue;
 }
 
+function cardPaperColor(domain: Resource, affordable: boolean): number {
+  if (!affordable) {
+    return 0x928981;
+  }
+  if (domain === 'bricks') {
+    return 0xf0e0b8;
+  }
+  if (domain === 'weapons') {
+    return 0xf6d3cb;
+  }
+  return 0xc9dafd;
+}
+
+function cardTitleHex(domain: Resource, affordable: boolean): string {
+  if (!affordable) {
+    return '#58575d';
+  }
+  if (domain === 'bricks') {
+    return '#8b6523';
+  }
+  if (domain === 'weapons') {
+    return '#b3281f';
+  }
+  return '#315fbf';
+}
+
 function cardFillColor(domain: Resource, affordable: boolean): number {
-  return affordable ? mixColor(cardTypeColor(domain), THEME.parchment, 0.42) : 0x8a7f74;
+  return affordable ? cardPaperColor(domain, true) : 0x877f78;
 }
 
 function cardBorderColor(domain: Resource, affordable: boolean, selected: boolean): number {
   if (selected) {
     return THEME.gold;
   }
-  return affordable ? cardTypeColor(domain) : 0xd3c2b0;
+  return affordable ? cardTypeColor(domain) : 0x9aa0a8;
 }
 
 function paintCardFrame(
@@ -203,14 +229,30 @@ function paintCardFrame(
   affordable: boolean,
   selected: boolean,
 ): void {
-  const radius = Math.min(12, Math.max(7, Math.round(width * 0.08)));
+  const radius = Math.min(16, Math.max(8, Math.round(width * 0.1)));
+  const outerColor = affordable ? cardTypeColor(domain) : 0x7d838b;
+  const paperColor = cardFillColor(domain, affordable);
+  const innerColor = affordable ? mixColor(paperColor, 0xffffff, 0.18) : mixColor(paperColor, 0x000000, 0.08);
+  const insetStroke = affordable ? mixColor(outerColor, 0xffffff, 0.62) : 0xc0c6cf;
   frame.clear();
-  frame.fillStyle(0x03070f, 0.28);
-  frame.fillRoundedRect(-width / 2 + 4, -height / 2 + 7, width, height, radius);
-  frame.fillStyle(cardFillColor(domain, affordable), affordable ? 0.98 : 0.84);
+  frame.fillStyle(0x02050c, 0.24);
+  frame.fillRoundedRect(-width / 2 + 5, -height / 2 + 8, width, height, radius + 1);
+  if (selected) {
+    frame.fillStyle(THEME.gold, 0.2);
+    frame.fillRoundedRect(-width / 2 - 4, -height / 2 - 4, width + 8, height + 8, radius + 4);
+  }
+  frame.fillStyle(outerColor, affordable ? 0.98 : 0.84);
   frame.fillRoundedRect(-width / 2, -height / 2, width, height, radius);
-  frame.lineStyle(selected ? 4 : 2, cardBorderColor(domain, affordable, selected), affordable ? 0.98 : 0.78);
-  frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
+  frame.fillStyle(paperColor, affordable ? 1 : 0.94);
+  frame.fillRoundedRect(-width / 2 + 5, -height / 2 + 5, width - 10, height - 10, Math.max(4, radius - 4));
+  frame.fillStyle(innerColor, affordable ? 0.6 : 0.68);
+  frame.fillRoundedRect(-width / 2 + 10, -height / 2 + 10, width - 20, height - 20, Math.max(4, radius - 7));
+  frame.lineStyle(2, insetStroke, affordable ? 0.78 : 0.66);
+  frame.strokeRoundedRect(-width / 2 + 6, -height / 2 + 6, width - 12, height - 12, Math.max(4, radius - 5));
+  frame.lineStyle(selected ? 3 : 0, cardBorderColor(domain, affordable, selected), affordable ? 0.86 : 0.72);
+  if (selected) {
+    frame.strokeRoundedRect(-width / 2 - 1, -height / 2 - 1, width + 2, height + 2, radius + 1);
+  }
 }
 
 function createResourceIcon(
@@ -221,26 +263,31 @@ function createResourceIcon(
   size: number,
   muted: boolean,
 ): Phaser.GameObjects.Graphics {
-  const color = muted ? 0xd2c6ba : cardTypeColor(resource);
-  const accent = muted ? 0xf0e6dc : mixColor(color, 0xffffff, 0.3);
+  const color = muted ? 0x9ba0a8 : cardTypeColor(resource);
+  const accent = muted ? 0xc1c5cc : mixColor(color, 0xffffff, 0.34);
+  const shadow = muted ? 0x5e6168 : mixColor(color, 0x000000, 0.46);
   const graphics = scene.add.graphics();
   graphics.setPosition(x, y);
 
   if (resource === 'bricks') {
-    const unit = size / 4;
+    graphics.fillStyle(shadow, 0.42);
+    graphics.fillTriangle(-size * 0.18, -size * 0.1, size * 0.04, -size * 0.26, size * 0.24, -size * 0.08);
+    graphics.fillTriangle(-size * 0.18, -size * 0.1, size * 0.24, -size * 0.08, size * 0.02, size * 0.08);
+    graphics.fillTriangle(size * 0.24, -size * 0.08, size * 0.24, size * 0.16, size * 0.02, size * 0.08);
     graphics.fillStyle(color, 1);
-    graphics.fillRect(-size / 2, -unit * 1.35, unit * 1.8, unit);
-    graphics.fillRect(-size / 2 + unit * 2, -unit * 1.35, unit * 1.8, unit);
-    graphics.fillRect(-size / 2 + unit, -unit * 0.2, unit * 1.8, unit);
+    graphics.fillTriangle(-size * 0.22, -size * 0.16, 0, -size * 0.32, size * 0.22, -size * 0.16);
     graphics.fillStyle(accent, 1);
-    graphics.fillRect(-size / 2 + unit * 0.15, -unit * 1.1, unit * 0.8, unit * 0.18);
-    graphics.fillRect(-size / 2 + unit * 2.15, -unit * 1.1, unit * 0.8, unit * 0.18);
+    graphics.fillTriangle(-size * 0.22, -size * 0.16, 0, -size * 0.02, 0, -size * 0.32);
+    graphics.fillStyle(mixColor(color, 0x000000, 0.12), 1);
+    graphics.fillTriangle(0, -size * 0.32, size * 0.22, -size * 0.16, 0, -size * 0.02);
     return graphics;
   }
 
   if (resource === 'weapons') {
+    graphics.lineStyle(Math.max(2, size * 0.14), shadow, 0.42);
+    graphics.lineBetween(-size * 0.28, size * 0.34, size * 0.34, -size * 0.24);
     graphics.lineStyle(Math.max(2, size * 0.14), color, 1);
-    graphics.lineBetween(-size * 0.32, size * 0.34, size * 0.3, -size * 0.28);
+    graphics.lineBetween(-size * 0.32, size * 0.32, size * 0.3, -size * 0.28);
     graphics.fillStyle(accent, 1);
     graphics.fillTriangle(size * 0.22, -size * 0.34, size * 0.46, -size * 0.48, size * 0.36, -size * 0.18);
     graphics.lineStyle(Math.max(1, size * 0.09), accent, 1);
@@ -248,6 +295,9 @@ function createResourceIcon(
     return graphics;
   }
 
+  graphics.fillStyle(shadow, 0.3);
+  graphics.fillTriangle(size * 0.04, -size * 0.42, size * 0.42, 0.04, size * 0.04, size * 0.48);
+  graphics.fillTriangle(size * 0.04, -size * 0.42, -size * 0.38, 0.04, size * 0.04, size * 0.48);
   graphics.fillStyle(color, 1);
   graphics.fillTriangle(0, -size * 0.5, size * 0.42, 0, 0, size * 0.5);
   graphics.fillTriangle(0, -size * 0.5, -size * 0.42, 0, 0, size * 0.5);
@@ -295,9 +345,12 @@ function createIllustrationIcon(
   const graphics = scene.add.graphics();
   graphics.setPosition(x, y);
 
-  const main = muted ? 0xd8cdc1 : color;
-  const light = muted ? 0xf2ece5 : mixColor(color, 0xffffff, 0.42);
-  const dark = muted ? 0x6c625a : mixColor(color, 0x000000, 0.36);
+  const main = muted ? 0x9ea2a8 : mixColor(color, 0xffffff, 0.22);
+  const light = muted ? 0xc4c7cc : mixColor(main, 0xffffff, 0.36);
+  const dark = muted ? 0x64686f : mixColor(color, 0x000000, 0.28);
+
+  graphics.fillStyle(0x000000, muted ? 0.05 : 0.12);
+  graphics.fillEllipse(size * 0.06, size * 0.22, size * 0.84, size * 0.26);
 
   switch (illustration) {
     case 'wall': {
@@ -482,7 +535,6 @@ export class GameScene extends Phaser.Scene {
 
   private handPreviewText!: Phaser.GameObjects.Text;
   private handHintText!: Phaser.GameObjects.Text;
-  private battleFeedText!: Phaser.GameObjects.Text;
   private actionPanelContainer!: Phaser.GameObjects.Container;
   private actionPanelTitleText!: Phaser.GameObjects.Text;
   private actionPanelStatusText!: Phaser.GameObjects.Text;
@@ -1352,7 +1404,7 @@ export class GameScene extends Phaser.Scene {
     this.handContainer = this.add.container(0, 0).setDepth(30);
 
     const narrow = this.isNarrowLayout(width);
-    const panelHeight = narrow ? Math.max(176, Math.min(224, height * 0.29)) : Math.max(238, Math.min(286, height * 0.28));
+    const panelHeight = narrow ? Math.max(190, Math.min(236, height * 0.31)) : Math.max(254, Math.min(312, height * 0.31));
     const panelTop = height - panelHeight - 10;
 
     this.handSurface = this.add
@@ -1368,17 +1420,6 @@ export class GameScene extends Phaser.Scene {
         wordWrap: { width: narrow ? Math.max(142, width * 0.48) : Math.min(420, width * 0.26) },
       })
       .setOrigin(0, 0);
-
-    this.battleFeedText = this.add
-      .text(width / 2, panelTop + 12, 'Battle feed will appear here.', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '10px' : '14px',
-        color: '#ffdca8',
-        align: 'center',
-        lineSpacing: narrow ? 1 : 3,
-        wordWrap: { width: narrow ? Math.max(120, width * 0.38) : Math.min(560, width * 0.34) },
-      })
-      .setOrigin(0.5, 0);
 
     this.handHintText = this.add
       .text(width - 26, panelTop + (narrow ? panelHeight - 36 : 16), narrow ? 'Tap: select\nSwipe: play/discard' : 'Click full-color cards | right-click discard', {
@@ -1429,9 +1470,9 @@ export class GameScene extends Phaser.Scene {
       this.discardActionButton.container,
     ]);
 
-    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 46 : 72));
+    this.handCardsContainer = this.add.container(0, panelTop + panelHeight - (narrow ? 76 : 120));
 
-    this.handContainer.add([this.handSurface, this.handPreviewText, this.battleFeedText, this.handHintText, this.actionPanelContainer, this.handCardsContainer]);
+    this.handContainer.add([this.handSurface, this.handPreviewText, this.handHintText, this.actionPanelContainer, this.handCardsContainer]);
   }
 
   private createOverlayLayer(): void {
@@ -1952,54 +1993,76 @@ export class GameScene extends Phaser.Scene {
     this.clearEnemyCardReveal();
 
     const narrow = this.isNarrowLayout();
-    const width = narrow ? Math.min(250, this.scale.width - 44) : 292;
-    const height = narrow ? 148 : 174;
+    const width = narrow ? Math.min(176, this.scale.width - 56) : 214;
+    const height = narrow ? 244 : 292;
     const x = this.scale.width / 2;
-    const y = narrow ? Math.max(190, this.scale.height * 0.38) : this.scale.height * 0.43;
-    const cardColor = cardTypeColor(card.domain);
-
-    const shadow = this.add.rectangle(8, 10, width, height, 0x06101e, 0.58);
-    const frame = this.add
-      .rectangle(0, 0, width, height, cardColor, 0.98)
-      .setStrokeStyle(4, 0xffe2b8, 0.95);
-    const header = this.add.rectangle(0, -height / 2 + 22, width - 18, 34, 0x121c2b, 0.78);
+    const y = narrow ? Math.max(218, this.scale.height * 0.44) : this.scale.height * 0.47;
+    const frame = this.add.graphics();
+    paintCardFrame(frame, width, height, card.domain, true, false);
     const label = this.add
-      .text(0, -height / 2 + 8, 'Opponent plays', {
+      .text(0, -height / 2 - 30, 'Opponent plays', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '14px' : '16px',
         color: '#ffe9c8',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5, 0);
-    const title = this.add
-      .text(0, -height / 2 + 48, card.name, {
+      .setOrigin(0.5);
+    const iconSize = narrow ? 18 : 22;
+    const resourceIcon = createResourceIcon(
+      this,
+      card.domain,
+      -width / 2 + 16,
+      -height / 2 + 18,
+      iconSize,
+      false,
+    );
+    const costShadow = this.add
+      .text(width / 2 - 16, -height / 2 + 8, String(card.cost), {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '24px' : '30px',
-        color: '#fff8e8',
+        fontSize: narrow ? '22px' : '28px',
+        color: '#fffdf7',
+        fontStyle: 'bold',
+      })
+      .setOrigin(1, 0);
+    const cost = this.add
+      .text(width / 2 - 18, -height / 2 + 6, String(card.cost), {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '22px' : '28px',
+        color: '#12100e',
+        fontStyle: 'bold',
+      })
+      .setOrigin(1, 0);
+    const title = this.add
+      .text(0, -height / 2 + 28, card.name, {
+        fontFamily: FONT_FAMILY,
+        fontSize: narrow ? '19px' : '24px',
+        color: cardTitleHex(card.domain, true),
         fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: width - 34 },
       })
       .setOrigin(0.5, 0);
-    const cost = this.add
-      .text(0, title.y + (narrow ? 34 : 42), `${card.domain.toUpperCase()} ${card.cost}`, {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '13px' : '15px',
-        color: '#fbe0b6',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
+    title.setLineSpacing(-2);
+    const illustration = createIllustrationIcon(
+      this,
+      getCardIllustration(card),
+      0,
+      narrow ? 18 : 26,
+      narrow ? 54 : 68,
+      cardTypeColor(card.domain),
+      false,
+    );
     const text = this.add
-      .text(0, height / 2 - (narrow ? 48 : 54), card.text, {
+      .text(0, height / 2 - (narrow ? 58 : 70), this.formatCardEffectLine(card), {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '13px' : '15px',
-        color: '#fff3dd',
+        fontSize: narrow ? '14px' : '16px',
+        color: '#24201c',
         align: 'center',
         wordWrap: { width: width - 40 },
       })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5);
 
-    const reveal = this.add.container(x, y, [shadow, frame, header, label, title, cost, text]);
+    const reveal = this.add.container(x, y, [label, frame, resourceIcon, costShadow, cost, title, illustration, text]);
     reveal.setDepth(55);
     reveal.setAlpha(this.animationsEnabled ? 0 : 1);
     reveal.setScale(1);
@@ -2511,7 +2574,6 @@ export class GameScene extends Phaser.Scene {
               : 'Opponent turn';
     this.turnLabelText.setText(turnLabel);
 
-    const lastLogs = this.state.log.slice(-3);
     const currentInstruction =
       this.state.phase === 'ended'
         ? this.state.winner === 'player'
@@ -2529,9 +2591,8 @@ export class GameScene extends Phaser.Scene {
                 : 'Red is cycling one hidden card into discard.'
               : this.aiPendingAction?.type === 'play_card'
                 ? 'Opponent card is resolving.'
-            : 'Opponent is choosing a response.';
+              : 'Opponent is choosing a response.';
     this.statusText.setText(currentInstruction);
-    this.battleFeedText.setText(lastLogs.length > 0 ? lastLogs.map((entry) => `- ${entry}`).join('\n') : 'No battle events yet.');
 
     this.playerPanel.headerText.setText('Black');
     this.aiPanel.headerText.setText('Red');
@@ -2632,13 +2693,13 @@ export class GameScene extends Phaser.Scene {
     const hand = this.state.players.player.hand;
     const panelWidth = this.handSurface.width;
     const maxWidth = panelWidth - 42;
-    const targetCardWidth = narrow ? 68 : 168;
+    const targetCardWidth = narrow ? 78 : 132;
     const gap = hand.length > 1 ? Math.min(narrow ? 7 : 16, Math.max(4, (maxWidth - hand.length * targetCardWidth) / (hand.length - 1))) : 0;
     const count = Math.max(1, hand.length);
-    const cardWidth = Math.min(narrow ? 88 : 214, Math.max(narrow ? 54 : 126, (maxWidth - gap * (count - 1)) / count));
-    const compact = cardWidth < 136;
-    const ultraCompact = cardWidth < 74;
-    const cardHeight = ultraCompact ? 92 : compact ? 118 : 138;
+    const cardWidth = Math.min(narrow ? 92 : 148, Math.max(narrow ? 62 : 110, (maxWidth - gap * (count - 1)) / count));
+    const compact = cardWidth < 118;
+    const ultraCompact = cardWidth < 80;
+    const cardHeight = Math.round(cardWidth * (ultraCompact ? 1.45 : compact ? 1.42 : 1.38));
 
     const rowWidth = count * cardWidth + (count - 1) * gap;
     const startX = this.scale.width / 2 - rowWidth / 2 + cardWidth / 2;
@@ -2653,26 +2714,26 @@ export class GameScene extends Phaser.Scene {
       const y = 0;
       const affordable = canAffordCard(this.state, 'player', cardId);
       const muted = !affordable;
-      const cardPadding = ultraCompact ? 5 : compact ? 8 : 12;
+      const cardPadding = ultraCompact ? 6 : compact ? 8 : 12;
       const isSelected = this.selectedHandIndex === index;
-      const iconSize = ultraCompact ? 13 : compact ? 18 : 24;
-      const illustrationSize = ultraCompact ? 25 : compact ? 36 : 48;
-      const titleY = -cardHeight / 2 + (ultraCompact ? 19 : compact ? 24 : 29);
-      const titleWrapWidth = Math.max(36, cardWidth - cardPadding * 2);
+      const iconSize = ultraCompact ? 12 : compact ? 15 : 18;
+      const illustrationSize = ultraCompact ? 24 : compact ? 34 : 42;
+      const titleY = -cardHeight / 2 + (ultraCompact ? 20 : compact ? 24 : 30);
+      const titleWrapWidth = Math.max(36, cardWidth - cardPadding * 2 - 8);
       const effectText = this.formatCardEffectLine(card);
 
       const container = this.add.container(x, y);
-      container.setY(isSelected ? -16 : 0);
-      container.setScale(isSelected ? 1.06 : 1);
+      container.setAlpha(affordable ? 1 : 0.82);
+      container.setY(isSelected ? -12 : 0);
+      container.setScale(isSelected ? 1.04 : 1);
       const frame = this.add.graphics();
       paintCardFrame(frame, cardWidth, cardHeight, card.domain, affordable, isSelected);
 
-      const topRule = this.add.rectangle(0, -cardHeight / 2 + (ultraCompact ? 17 : compact ? 22 : 27), cardWidth - cardPadding * 2, 1, 0x241d19, muted ? 0.18 : 0.26);
       const resourceIcon = createResourceIcon(
         this,
         card.domain,
-        -cardWidth / 2 + cardPadding + iconSize / 2,
-        -cardHeight / 2 + cardPadding + iconSize / 2,
+        -cardWidth / 2 + cardPadding + iconSize / 2 + 1,
+        -cardHeight / 2 + cardPadding + iconSize / 2 + 1,
         iconSize,
         muted,
       );
@@ -2680,8 +2741,8 @@ export class GameScene extends Phaser.Scene {
       const title = this.add
         .text(0, titleY, card.name, {
           fontFamily: FONT_FAMILY,
-          fontSize: ultraCompact ? '8px' : compact ? '12px' : '16px',
-          color: muted ? '#f0e5d8' : '#241d19',
+          fontSize: ultraCompact ? '8px' : compact ? '11px' : '15px',
+          color: cardTitleHex(card.domain, affordable),
           fontStyle: 'bold',
           align: 'center',
           wordWrap: { width: titleWrapWidth },
@@ -2689,42 +2750,43 @@ export class GameScene extends Phaser.Scene {
         .setOrigin(0.5, 0);
       title.setLineSpacing(ultraCompact ? -2 : -1);
 
-      const costBadge = this.add.circle(
-        cardWidth / 2 - cardPadding - iconSize / 2,
-        -cardHeight / 2 + cardPadding + iconSize / 2,
-        ultraCompact ? 8 : compact ? 11 : 14,
-        muted ? 0x6e6258 : 0x1f2a39,
-        0.96,
-      );
-      costBadge.setStrokeStyle(2, muted ? 0xe4d8ca : 0xf0e3c7, muted ? 0.78 : 0.95);
-      const costText = this.add
-        .text(costBadge.x, costBadge.y, String(card.cost), {
+      const costShadow = this.add
+        .text(cardWidth / 2 - cardPadding - 1, -cardHeight / 2 + cardPadding - 1, String(card.cost), {
           fontFamily: FONT_FAMILY,
-          fontSize: ultraCompact ? '8px' : compact ? '12px' : '16px',
-          color: muted ? '#f4ece3' : '#f9f4e7',
+          fontSize: ultraCompact ? '12px' : compact ? '16px' : '22px',
+          color: '#fffdf7',
           fontStyle: 'bold',
         })
-        .setOrigin(0.5);
+        .setOrigin(1, 0);
+      const costText = this.add
+        .text(cardWidth / 2 - cardPadding - 2, -cardHeight / 2 + cardPadding - 2, String(card.cost), {
+          fontFamily: FONT_FAMILY,
+          fontSize: ultraCompact ? '12px' : compact ? '16px' : '22px',
+          color: muted ? '#746a61' : '#12100e',
+          fontStyle: 'bold',
+        })
+        .setOrigin(1, 0);
 
       const illustration = createIllustrationIcon(
         this,
         getCardIllustration(card),
         0,
-        ultraCompact ? 4 : compact ? 8 : 10,
+        ultraCompact ? 6 : compact ? 13 : 18,
         illustrationSize,
         cardTypeColor(card.domain),
         muted,
       );
 
       const effect = this.add
-        .text(0, cardHeight / 2 - (ultraCompact ? 14 : compact ? 20 : 25), ultraCompact ? '' : effectText, {
+        .text(0, cardHeight / 2 - (ultraCompact ? 16 : compact ? 22 : 28), ultraCompact ? '' : effectText, {
           fontFamily: FONT_FAMILY,
-          fontSize: compact ? '10px' : '13px',
-          color: muted ? '#efe4d7' : '#2f2924',
+          fontSize: ultraCompact ? '8px' : compact ? '10px' : '13px',
+          color: muted ? '#635b54' : '#24201c',
           align: 'center',
           wordWrap: { width: Math.max(30, cardWidth - cardPadding * 2) },
         })
         .setOrigin(0.5);
+      effect.setLineSpacing(ultraCompact ? -1 : 0);
 
       const hit = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x000000, 0).setInteractive({ useHandCursor: affordable });
       hit.on('pointerover', () => {
@@ -2740,14 +2802,14 @@ export class GameScene extends Phaser.Scene {
         this.onCardPointerDown(cardId, index, pointer);
       });
 
-      container.add([frame, topRule, resourceIcon, title, costBadge, costText, illustration, effect, hit]);
+      container.add([frame, resourceIcon, title, costShadow, costText, illustration, effect, hit]);
       this.handCardsContainer.add(container);
 
       if (this.animationsEnabled) {
         container.setAlpha(0);
         this.tweens.add({
           targets: container,
-          alpha: 1,
+          alpha: affordable ? 1 : 0.82,
           y: container.y,
           duration: animDuration(180),
           delay: animDelay(index * 24),
@@ -2777,15 +2839,15 @@ export class GameScene extends Phaser.Scene {
       if (this.animationsEnabled) {
         this.tweens.add({
           targets: entry.container,
-          y: selected ? entry.baseY - 16 : entry.baseY,
-          scaleX: selected ? 1.06 : 1,
-          scaleY: selected ? 1.06 : 1,
+          y: selected ? entry.baseY - 12 : entry.baseY,
+          scaleX: selected ? 1.04 : 1,
+          scaleY: selected ? 1.04 : 1,
           duration: animDuration(130),
           ease: 'Sine.Out',
         });
       } else {
-        entry.container.setY(selected ? entry.baseY - 16 : entry.baseY);
-        entry.container.setScale(selected ? 1.06 : 1);
+        entry.container.setY(selected ? entry.baseY - 12 : entry.baseY);
+        entry.container.setScale(selected ? 1.04 : 1);
       }
     });
   }
