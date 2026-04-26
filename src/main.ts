@@ -3,16 +3,14 @@ import { shouldExposeAutomationHooks } from './automation';
 import type { GameScene } from './scenes/GameScene';
 
 type TestingWindow = Window & {
-  __phaserGame?: import('phaser').Game;
   render_game_to_text?: () => string;
   advanceTime?: (ms: number) => void;
 };
 
 let game: import('phaser').Game | null = null;
 
-function attachTestingHooks(phaserGame: import('phaser').Game): void {
+function attachTestingHooks(): void {
   const testingWindow = window as TestingWindow;
-  testingWindow.__phaserGame = phaserGame;
   testingWindow.render_game_to_text = () => {
     if (!game) {
       return JSON.stringify({ mode: 'boot', note: 'Game not initialized' }, null, 2);
@@ -37,7 +35,6 @@ function attachTestingHooks(phaserGame: import('phaser').Game): void {
 
 function detachTestingHooks(): void {
   const testingWindow = window as TestingWindow;
-  delete testingWindow.__phaserGame;
   delete testingWindow.render_game_to_text;
   delete testingWindow.advanceTime;
 }
@@ -71,7 +68,7 @@ async function bootstrap(): Promise<void> {
   });
 
   if (shouldExposeAutomationHooks()) {
-    attachTestingHooks(game);
+    attachTestingHooks();
   }
 }
 

@@ -46,8 +46,13 @@ export function loadMeta(): GameMetaV1 {
   }
 }
 
-export function saveMeta(meta: GameMetaV1): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(meta));
+export function saveMeta(meta: GameMetaV1): boolean {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(meta));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function updateMeta(mutator: (meta: GameMetaV1) => GameMetaV1): GameMetaV1 {

@@ -132,3 +132,11 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Reworked hand entry animation so card arrivals use a subtle position/scale settle without dropping card alpha below the intended visible value, preventing partial-hand flashes on turn return.
 - Added `renderedHandCardCount` and `fullyVisibleHandCardCount` to `render_game_to_text().ui` for deterministic visibility checks.
 - Verified with `npm run lint`, `npm test`, `npm run build`, the develop-web-game Playwright client (`output/hand-visibility-client/`), and custom desktop/mobile turn-transition captures in `output/hand-visibility-regression/`; desktop/mobile return-to-player frames now report and show 6 visible cards.
+
+## Audit Fix Implementation
+- Hardened local meta persistence so blocked/quota-limited `localStorage.setItem` calls no longer crash menu toggles or match-end stat updates.
+- Removed the undocumented `window.__phaserGame` automation global; committed hooks now match the documented `render_game_to_text`, `advanceTime`, and scene-owned `__game.interact` surface.
+- Refreshed `specs/08-balance-ai-milestones.md` around the active 30-card v1 starter deck and post-v1 expansion notes.
+- Added storage failure tests and a markdown/card consistency test for the active starter deck tables.
+- Added `npm run smoke:browser`, a Playwright smoke that verifies dev hooks through a player/AI turn and confirms production preview hook gating.
+- Verified with `npm run lint`, `npm test`, `npm run build`, and `npm run smoke:browser`; smoke screenshots are under `output/browser-smoke/`.
