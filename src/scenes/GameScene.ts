@@ -267,8 +267,14 @@ function paintCardFrame(
   }
 }
 
-function drawResourceIcon(graphics: Phaser.GameObjects.Graphics, resource: Resource, size: number, muted: boolean): void {
-  const color = muted ? 0x9ba0a8 : cardTypeColor(resource);
+function drawResourceIcon(
+  graphics: Phaser.GameObjects.Graphics,
+  resource: Resource,
+  size: number,
+  muted: boolean,
+  colorOverride?: number,
+): void {
+  const color = colorOverride ?? (muted ? 0x9ba0a8 : cardTypeColor(resource));
   const accent = muted ? 0xc1c5cc : mixColor(color, 0xffffff, 0.34);
   const shadow = muted ? 0x5e6168 : mixColor(color, 0x000000, 0.46);
   graphics.clear();
@@ -316,10 +322,11 @@ function createResourceIcon(
   y: number,
   size: number,
   muted: boolean,
+  colorOverride?: number,
 ): Phaser.GameObjects.Graphics {
   const graphics = scene.add.graphics();
   graphics.setPosition(x, y);
-  drawResourceIcon(graphics, resource, size, muted);
+  drawResourceIcon(graphics, resource, size, muted, colorOverride);
   return graphics;
 }
 
@@ -1342,12 +1349,13 @@ export class GameScene extends Phaser.Scene {
       .rectangle(left + width / 2, config.top + blockHeight / 2, width, blockHeight, config.color, 0.9)
       .setStrokeStyle(2, 0xe5d9c1);
 
-    const iconX = left + (config.compact ? 15 : 24);
-    const iconBadge = this.add.circle(iconX, config.top + (config.compact ? 15 : 24), config.compact ? 10 : 17, 0x253546, 0.95).setStrokeStyle(2, 0xe4d8bd);
-    const iconGraphic = createResourceIcon(this, config.resource, iconX, iconBadge.y, config.compact ? 8 : 13, false);
+    const iconX = left + (config.compact ? 22 : 30);
+    const iconY = config.top + (config.compact ? 15 : 24);
+    const iconGraphic = createResourceIcon(this, config.resource, iconX, iconY, (config.compact ? 9 : 14) * 2, false, 0xf6f1e4);
 
-    const labelX = left + (config.compact ? 31 : 50);
+    const labelX = left + (config.compact ? 42 : 60);
     const generatorValueX = left + width - (config.compact ? 16 : 28);
+    const labelWrapWidth = Math.max(42, generatorValueX - labelX - (config.compact ? 14 : 24));
 
     const labelText = this.add
       .text(labelX, config.top + (config.compact ? 5 : 8), config.label, {
@@ -1355,7 +1363,7 @@ export class GameScene extends Phaser.Scene {
         fontSize: config.compact ? '10px' : '16px',
         color: '#f5f2ea',
         fontStyle: 'bold',
-        wordWrap: { width: Math.max(42, width - (config.compact ? 92 : 132)) },
+        wordWrap: { width: labelWrapWidth },
       })
       .setOrigin(0, 0);
 
@@ -1364,7 +1372,7 @@ export class GameScene extends Phaser.Scene {
         fontFamily: FONT_FAMILY,
         fontSize: config.compact ? '8px' : '14px',
         color: '#f1e8d8',
-        wordWrap: { width: Math.max(42, width - (config.compact ? 92 : 132)) },
+        wordWrap: { width: labelWrapWidth },
       })
       .setOrigin(0, 0);
 
@@ -1386,7 +1394,7 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    root.add([bg, iconBadge, iconGraphic, labelText, resourceNameText, generatorValue, resourceValue]);
+    root.add([bg, iconGraphic, labelText, resourceNameText, generatorValue, resourceValue]);
 
     return {
       root,
