@@ -280,16 +280,33 @@ function drawResourceIcon(
   graphics.clear();
 
   if (resource === 'bricks') {
-    graphics.fillStyle(shadow, 0.42);
-    graphics.fillTriangle(-size * 0.18, -size * 0.1, size * 0.04, -size * 0.26, size * 0.24, -size * 0.08);
-    graphics.fillTriangle(-size * 0.18, -size * 0.1, size * 0.24, -size * 0.08, size * 0.02, size * 0.08);
-    graphics.fillTriangle(size * 0.24, -size * 0.08, size * 0.24, size * 0.16, size * 0.02, size * 0.08);
-    graphics.fillStyle(color, 1);
-    graphics.fillTriangle(-size * 0.22, -size * 0.16, 0, -size * 0.32, size * 0.22, -size * 0.16);
-    graphics.fillStyle(accent, 1);
-    graphics.fillTriangle(-size * 0.22, -size * 0.16, 0, -size * 0.02, 0, -size * 0.32);
-    graphics.fillStyle(mixColor(color, 0x000000, 0.12), 1);
-    graphics.fillTriangle(0, -size * 0.32, size * 0.22, -size * 0.16, 0, -size * 0.02);
+    const brickW = size * 0.29;
+    const brickH = size * 0.17;
+    const gapX = size * 0.05;
+    const gapY = size * 0.04;
+    const startY = -size * 0.26;
+    const mortar = muted ? 0x6e737a : mixColor(color, 0x000000, 0.34);
+
+    const drawBrick = (x: number, y: number): void => {
+      graphics.fillStyle(shadow, 0.34);
+      graphics.fillRoundedRect(x + size * 0.02, y + size * 0.02, brickW, brickH, Math.max(2, size * 0.05));
+      graphics.fillStyle(color, 1);
+      graphics.fillRoundedRect(x, y, brickW, brickH, Math.max(2, size * 0.05));
+      graphics.fillStyle(accent, 0.5);
+      graphics.fillRect(x + brickW * 0.12, y + brickH * 0.16, brickW * 0.56, brickH * 0.16);
+      graphics.lineStyle(Math.max(1, size * 0.03), mortar, 0.62);
+      graphics.strokeRoundedRect(x, y, brickW, brickH, Math.max(2, size * 0.05));
+    };
+
+    for (let row = 0; row < 3; row += 1) {
+      const cols = row === 1 ? 2 : 3;
+      const offsetX = row === 1 ? (brickW + gapX) * 0.5 : 0;
+      const y = startY + row * (brickH + gapY);
+      for (let col = 0; col < cols; col += 1) {
+        const x = -size * 0.52 + offsetX + col * (brickW + gapX);
+        drawBrick(x, y);
+      }
+    }
     return;
   }
 
