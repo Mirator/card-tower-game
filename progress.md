@@ -144,6 +144,11 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Updated gameplay/spec docs to describe refill as part of turn start instead of turn end.
 - Verified with `npm run lint`, `npm test`, and a browser trace in `output/next-turn-refill/` showing 5 visible player cards during the AI turn and 6 again on the player's returned turn.
 
+## Resource Icon Unification
+- Removed resource abbreviation badges (`HAM`, `SWD`, `STR`) from side panels.
+- Reused the same resource icon renderer (brick / sword / crystal) for both side panels and card corners, so player and enemy rows match card symbols exactly.
+- Updated README, root GDD, and UI/architecture specs to document icon-based resource badges instead of text abbreviations.
+
 ## Audit Fix Implementation
 - Hardened local meta persistence so blocked/quota-limited `localStorage.setItem` calls no longer crash menu toggles or match-end stat updates.
 - Removed the undocumented `window.__phaserGame` automation global; committed hooks now match the documented `render_game_to_text`, `advanceTime`, and scene-owned `__game.interact` surface.

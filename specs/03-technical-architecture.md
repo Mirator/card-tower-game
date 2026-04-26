@@ -12,6 +12,7 @@
 - Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and an otherwise open middle playfield
 - Bottom cockpit: centered player hand tray, transient hover-preview overlay, drag guide overlay, and a narrow/mobile stacked variant
 - Overlay layer: floating damage/resource text, played-card travel, and match-end overlay
+- Resource icons are rendered through one shared glyph renderer so side panels and card corners stay visually consistent
 
 ### Implemented systems
 - Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, next-turn hand refill, card play/discard, effect resolution, statuses, and victory.

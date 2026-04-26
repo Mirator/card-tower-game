@@ -143,26 +143,23 @@ function animDelay(ms: number): number {
 
 const RESOURCE_META: Record<
   Resource,
-  { label: string; resourceName: string; iconLabel: string; color: number; generatorKey: 'quarry' | 'barracks' | 'magic' }
+  { label: string; resourceName: string; color: number; generatorKey: 'quarry' | 'barracks' | 'magic' }
 > = {
   bricks: {
     label: 'Builders',
     resourceName: 'Bricks',
-    iconLabel: 'HAM',
     color: THEME.brick,
     generatorKey: 'quarry',
   },
   weapons: {
     label: 'Soldiers',
     resourceName: 'Weapons',
-    iconLabel: 'SWD',
     color: THEME.weapon,
     generatorKey: 'barracks',
   },
   crystals: {
     label: 'Mages',
     resourceName: 'Crystals',
-    iconLabel: 'STR',
     color: THEME.crystal,
     generatorKey: 'magic',
   },
@@ -1247,9 +1244,9 @@ export class GameScene extends Phaser.Scene {
         side: config.side,
         panelWidth: config.width,
         top,
+        resource,
         label: RESOURCE_META[resource].label,
         resourceName: RESOURCE_META[resource].resourceName,
-        iconLabel: RESOURCE_META[resource].iconLabel,
         color: RESOURCE_META[resource].color,
         compact: config.compact,
       });
@@ -1336,9 +1333,9 @@ export class GameScene extends Phaser.Scene {
     side: PanelSide;
     panelWidth: number;
     top: number;
+    resource: Resource;
     label: string;
     resourceName: string;
-    iconLabel: string;
     color: number;
     compact: boolean;
   }): ResourceBlockRefs {
@@ -1353,14 +1350,7 @@ export class GameScene extends Phaser.Scene {
 
     const iconX = left + (config.compact ? 15 : 24);
     const iconBadge = this.add.circle(iconX, config.top + (config.compact ? 15 : 24), config.compact ? 10 : 17, 0x253546, 0.95).setStrokeStyle(2, 0xe4d8bd);
-    const iconText = this.add
-      .text(iconX, iconBadge.y, config.iconLabel, {
-        fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '6px' : '10px',
-        color: '#f4f0e5',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
+    const iconGraphic = createResourceIcon(this, config.resource, iconX, iconBadge.y, config.compact ? 8 : 13, false);
 
     const labelX = left + (config.compact ? 31 : 50);
     const generatorValueX = left + width - (config.compact ? 16 : 28);
@@ -1402,7 +1392,7 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    root.add([bg, iconBadge, iconText, labelText, resourceNameText, generatorValue, resourceValue]);
+    root.add([bg, iconBadge, iconGraphic, labelText, resourceNameText, generatorValue, resourceValue]);
 
     return {
       root,

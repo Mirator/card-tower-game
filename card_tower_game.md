@@ -116,6 +116,7 @@ These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=t
 The implemented UI uses:
 - Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, turn chips, and a reveal-focused top stage that appears during enemy card moments
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
+- Resource badges use shared icon glyphs (brick / sword / crystal) instead of text abbreviations
 - Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
 - Bottom cockpit with a vertically centered 6-card portrait hand tray, transient hover/drag card detail, drag-to-center play, drag-down discard, and a minimal controls hint
 - No turn timer in v1
