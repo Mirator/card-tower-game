@@ -10,7 +10,7 @@
 - Slim top card-flow bar: player draw pile, player discard pile, active turn headline, goal + enemy tower/wall summary, enemy discard pile, hidden enemy hand, turn chips, and a reveal-stage dock used during staged enemy card moments
 - Side panels: Player A and Player B resources, generators, tower, and wall
 - Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and an otherwise open middle playfield
-- Bottom cockpit: compact selected-card rail, centered player hand lane, compact Play/Discard action rail, and a narrow-only control hint
+- Bottom cockpit: centered player hand tray, transient hover-preview overlay, drag guide overlay, and a narrow/mobile stacked variant
 - Overlay layer: floating damage/resource text, played-card travel, and match-end overlay
 
 ### Implemented systems
@@ -65,6 +65,6 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
-`render_game_to_text()` includes a `ui` block describing top-strip card flow state such as visible draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card ids, and presentation fields such as `bottomHudLayout`, `topStageMode`, and `topStageCardId` for automation checks.
+`render_game_to_text()` includes a `ui` block describing top-strip card flow state such as visible draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card ids, and presentation fields such as `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, and `draggingCardId` for automation checks.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.

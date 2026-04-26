@@ -1091,7 +1091,7 @@ export function summarizeForText(state: GameState): string {
       },
       winner: state.winner,
       note: {
-      coords: 'No grid movement. Center = tower battlefield, side panels = resources, bottom = player hand with compact side rails.',
+      coords: 'No grid movement. Center = tower battlefield, side panels = resources, bottom = centered player hand tray with hover details and drag actions.',
       },
     },
     null,

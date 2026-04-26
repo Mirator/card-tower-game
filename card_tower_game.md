@@ -108,7 +108,7 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
-`render_game_to_text()` includes a `ui` block for the visible card-flow strip and refined HUD presentation: draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card state, `bottomHudLayout`, `topStageMode`, and `topStageCardId`.
+`render_game_to_text()` includes a `ui` block for the visible card-flow strip and refined HUD presentation: draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card state, `bottomHudLayout`, `topStageMode`, `topStageCardId`, `hoverPreviewCardId`, and `draggingCardId`.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.
 
@@ -117,7 +117,7 @@ The implemented UI uses:
 - Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, turn chips, and a reveal-focused top stage that appears during enemy card moments
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
 - Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
-- Bottom cockpit with a centered 6-card portrait hand lane, a compact selected-card rail, a compact Play/Discard rail, and a minimal controls hint on narrow layouts
+- Bottom cockpit with a centered 6-card portrait hand tray, transient hover/drag card detail, drag-to-center play, drag-down discard, and a minimal controls hint
 - No turn timer in v1
 
 Card flow behavior:
@@ -148,18 +148,19 @@ Hand-card visual language:
 
 Bottom HUD behavior:
 - No visible scrolling or persistent event log
-- Turn guidance stays in the top strip, while short card details stay in the selected-card rail
+- Turn guidance stays in the top strip, while short card details appear only while hovering or dragging a card
 - Combat/resource changes are communicated through animation, floating text, and discard/reveal motion instead of a text feed
 
 Controls:
 - Left click a playable card: play it immediately
 - Left click an unplayable card: no action
+- Drag a card into the center battlefield: play it on release
+- Drag a card downward: discard/cycle it on release
 - Right click a card: discard/cycle it
-- Hover or tap a card: select and preview it
+- Hover or tap a card: select it, with detail shown on hover or during drag
 - Enter: play selected card
 - Backspace/Delete: discard selected card
-- Mobile swipe up/down: play/discard
-- Play/Discard buttons: act on the selected card
+- Mobile drag up toward center / drag down: play/discard
 - F: toggle fullscreen
 - Esc: exit fullscreen
 

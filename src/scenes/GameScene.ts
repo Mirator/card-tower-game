@@ -49,13 +49,8 @@ interface CardVisual {
   height: number;
   domain: Resource;
   affordable: boolean;
+  baseX: number;
   baseY: number;
-}
-
-interface ActionButtonRefs {
-  container: Phaser.GameObjects.Container;
-  bg: Phaser.GameObjects.Rectangle;
-  text: Phaser.GameObjects.Text;
 }
 
 interface TopPileRefs {
@@ -97,6 +92,9 @@ interface GestureState {
   x: number;
   y: number;
   isTouch: boolean;
+  dragging: boolean;
+  offsetX: number;
+  offsetY: number;
 }
 
 interface Point {
@@ -105,6 +103,7 @@ interface Point {
 }
 
 const SWIPE_THRESHOLD = 44;
+const DRAG_START_THRESHOLD = 12;
 const NARROW_LAYOUT_WIDTH = 720;
 const ANIMATION_PACE = 1.5;
 const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
@@ -575,36 +574,6 @@ function createButton(
   return scene.add.container(x, y, [bg, text, hit]);
 }
 
-function createActionButton(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  width: number,
-  label: string,
-  fill: number,
-  onClick: () => void,
-): ActionButtonRefs {
-  const bg = scene.add.rectangle(0, 0, width, 34, fill, 0.96).setStrokeStyle(2, THEME.gold, 0.82);
-  const text = scene.add
-    .text(0, 0, label, {
-      fontFamily: FONT_FAMILY,
-      fontSize: '14px',
-      color: '#fff4dd',
-      fontStyle: 'bold',
-    })
-    .setOrigin(0.5);
-  const hit = scene.add.rectangle(0, 0, width, 34, 0x000000, 0).setInteractive({ useHandCursor: true });
-  hit.on('pointerover', () => bg.setScale(1.03, 1.04));
-  hit.on('pointerout', () => bg.setScale(1));
-  hit.on('pointerdown', onClick);
-
-  return {
-    container: scene.add.container(x, y, [bg, text, hit]),
-    bg,
-    text,
-  };
-}
-
 export class GameScene extends Phaser.Scene {
   private state!: GameState;
   private rng!: SeededRng;
@@ -636,20 +605,21 @@ export class GameScene extends Phaser.Scene {
   private turnIndicatorPlayer!: Phaser.GameObjects.Arc;
   private turnIndicatorAi!: Phaser.GameObjects.Arc;
 
-  private handPreviewText!: Phaser.GameObjects.Text;
   private handHintText!: Phaser.GameObjects.Text;
-  private actionPanelContainer!: Phaser.GameObjects.Container;
-  private actionPanelTitleText!: Phaser.GameObjects.Text;
-  private actionPanelStatusText!: Phaser.GameObjects.Text;
-  private playActionButton!: ActionButtonRefs;
-  private discardActionButton!: ActionButtonRefs;
   private handSurface!: Phaser.GameObjects.Rectangle;
   private handLaneCenterX = 0;
   private handLaneWidth = 0;
-  private bottomHudLayoutMode: 'compact-side-rails' | 'stacked-mobile' = 'compact-side-rails';
+  private bottomHudLayoutMode: 'card-only' | 'stacked-mobile' = 'card-only';
   private topStageMode: 'compact' | 'reveal' = 'compact';
   private topStageCardId: string | null = null;
   private topStageDock!: Phaser.GameObjects.Container;
+  private hoverPreviewContainer!: Phaser.GameObjects.Container;
+  private hoverPreviewBg!: Phaser.GameObjects.Rectangle;
+  private hoverPreviewInset!: Phaser.GameObjects.Rectangle;
+  private hoverPreviewText!: Phaser.GameObjects.Text;
+  private hoverPreviewCardId: string | null = null;
+  private dragGuideText!: Phaser.GameObjects.Text;
+  private draggingCardId: string | null = null;
 
   private endOverlay!: Phaser.GameObjects.Container;
   private endOverlayText!: Phaser.GameObjects.Text;
@@ -686,12 +656,14 @@ export class GameScene extends Phaser.Scene {
     this.progressLoop();
 
     this.scale.on('resize', this.handleResize, this);
+    this.input.on('pointermove', this.onGlobalPointerMove, this);
     this.input.on('pointerup', this.onGlobalPointerUp, this);
 
     this.attachAutomationHooks();
 
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.handleResize, this);
+      this.input.off('pointermove', this.onGlobalPointerMove, this);
       this.input.off('pointerup', this.onGlobalPointerUp, this);
       this.detachAutomationHooks();
     });
@@ -726,6 +698,8 @@ export class GameScene extends Phaser.Scene {
     this.enemyCardRevealContainer = null;
     this.topStageMode = 'compact';
     this.topStageCardId = null;
+    this.hoverPreviewCardId = null;
+    this.draggingCardId = null;
 
     this.backgroundContainer?.destroy(true);
     this.topCenterContainer?.destroy(true);
@@ -770,7 +744,8 @@ export class GameScene extends Phaser.Scene {
       },
       clearInput: () => {
         this.clearSelectedCard();
-        this.updateCardPreview();
+        this.hideCardHoverPreview();
+        this.hideDragGuide();
         this.refreshCardSelection();
       },
     };
@@ -1515,104 +1490,37 @@ export class GameScene extends Phaser.Scene {
     this.handContainer = this.add.container(0, 0).setDepth(30);
 
     const narrow = this.isNarrowLayout(width);
-    const panelHeight = narrow ? Math.max(190, Math.min(236, height * 0.31)) : Math.max(254, Math.min(312, height * 0.31));
+    const panelHeight = narrow ? Math.max(192, Math.min(228, height * 0.29)) : Math.max(212, Math.min(246, height * 0.28));
     const panelTop = height - panelHeight - 10;
-    const previewPanelWidth = narrow ? Math.min(150, width * 0.4) : Math.min(188, width * 0.15);
-    const previewPanelHeight = narrow ? 78 : 94;
-    const previewPanelX = 18 + previewPanelWidth / 2;
-    const previewPanelY = panelTop + previewPanelHeight / 2 + 12;
-    const actionPanelWidth = narrow ? Math.min(162, width * 0.42) : 176;
-    const actionPanelHeight = narrow ? 74 : 86;
-    const actionPanelX = width - actionPanelWidth / 2 - 18;
-    const actionPanelY = panelTop + actionPanelHeight / 2 + 12;
-    const lanePadding = narrow ? 18 : 26;
 
     this.handSurface = this.add
       .rectangle(width / 2, panelTop + panelHeight / 2, width - 20, panelHeight, 0x211a14, 0.93)
       .setStrokeStyle(2, THEME.gold, 0.65);
 
-    const previewPanelBg = this.add
-      .rectangle(0, 0, previewPanelWidth, previewPanelHeight, 0x14100c, 0.88)
-      .setStrokeStyle(2, 0xb9996d, 0.42);
-    const previewPanelInset = this.add
-      .rectangle(0, 0, previewPanelWidth - 10, previewPanelHeight - 10, 0x241b14, 0.48)
-      .setStrokeStyle(1, 0xe8d8bb, 0.08);
-    this.handPreviewText = this.add
-      .text(-previewPanelWidth / 2 + 12, -previewPanelHeight / 2 + 10, 'Selected card\nChoose a hand slot.', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '11px' : '15px',
-        color: '#f6ead7',
-        lineSpacing: narrow ? 1 : 3,
-        wordWrap: { width: previewPanelWidth - 24 },
-      })
-      .setOrigin(0, 0);
-    const previewPanelContainer = this.add.container(previewPanelX, previewPanelY, [previewPanelBg, previewPanelInset, this.handPreviewText]);
-
     this.handHintText = this.add
-      .text(width / 2, panelTop + panelHeight - 16, narrow ? 'Tap or hover to inspect' : 'Enter plays selected | Backspace discards', {
+      .text(width / 2, panelTop + panelHeight - 14, narrow ? 'Drag to center to play\nDrag down to discard' : 'Click to play | Drag to center to play | Drag down to discard', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '9px' : '11px',
         color: '#b9c6db',
         align: 'center',
       })
       .setOrigin(0.5, 1);
-    this.handHintText.setVisible(narrow);
 
-    const actionPanelBg = this.add
-      .rectangle(0, 0, actionPanelWidth, actionPanelHeight, 0x0f1725, 0.88)
-      .setStrokeStyle(2, THEME.gold, 0.4);
-    const actionPanelInset = this.add
-      .rectangle(0, 0, actionPanelWidth - 10, actionPanelHeight - 10, 0x1a2230, 0.34)
-      .setStrokeStyle(1, 0xe8d8bb, 0.08);
-    this.actionPanelTitleText = this.add
-      .text(0, narrow ? -23 : -25, 'Select a card', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '12px' : '14px',
-        color: '#fff1d2',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: actionPanelWidth - 20 },
-      })
-      .setOrigin(0.5);
-    this.actionPanelStatusText = this.add
-      .text(0, narrow ? -8 : -6, 'Choose from hand', {
-        fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '10px' : '11px',
-        color: '#cbd8ee',
-        align: 'center',
-        wordWrap: { width: actionPanelWidth - 20 },
-      })
-      .setOrigin(0.5);
-    this.playActionButton = createActionButton(this, -actionPanelWidth * 0.24, narrow ? 21 : 25, actionPanelWidth * 0.42, 'Play', 0x2f8f5d, () => {
-      this.tryPlaySelectedCard();
-    });
-    this.discardActionButton = createActionButton(this, actionPanelWidth * 0.24, narrow ? 21 : 25, actionPanelWidth * 0.42, 'Discard', 0x8b4f3e, () => {
-      this.tryDiscardSelectedCard();
-    });
-    this.actionPanelContainer = this.add.container(actionPanelX, actionPanelY, [
-      actionPanelBg,
-      actionPanelInset,
-      this.actionPanelTitleText,
-      this.actionPanelStatusText,
-      this.playActionButton.container,
-      this.discardActionButton.container,
-    ]);
+    this.bottomHudLayoutMode = narrow ? 'stacked-mobile' : 'card-only';
+    this.handLaneCenterX = width / 2;
+    this.handLaneWidth = Math.max(220, width - (narrow ? 28 : 76));
+    this.handCardsContainer = this.add.container(this.handLaneCenterX, panelTop + panelHeight - (narrow ? 64 : 94));
 
-    this.bottomHudLayoutMode = narrow ? 'stacked-mobile' : 'compact-side-rails';
-    const laneLeft = narrow ? 20 : previewPanelX + previewPanelWidth / 2 + lanePadding;
-    const laneRight = narrow ? width - 20 : actionPanelX - actionPanelWidth / 2 - lanePadding;
-    this.handLaneCenterX = (laneLeft + laneRight) / 2;
-    this.handLaneWidth = Math.max(180, laneRight - laneLeft);
-    this.handCardsContainer = this.add.container(this.handLaneCenterX, panelTop + panelHeight - (narrow ? 74 : 116));
-
-    this.handContainer.add([this.handSurface, previewPanelContainer, this.handHintText, this.actionPanelContainer, this.handCardsContainer]);
+    this.handContainer.add([this.handSurface, this.handHintText, this.handCardsContainer]);
   }
 
   private createOverlayLayer(): void {
     this.overlayContainer = this.add.container(0, 0).setDepth(40);
     this.topStageDock = this.createTopStageDock();
     this.topStageDock.setVisible(false);
-    this.overlayContainer.add(this.topStageDock);
+    this.hoverPreviewContainer = this.createHoverPreview();
+    this.dragGuideText = this.createDragGuideText();
+    this.overlayContainer.add([this.topStageDock, this.hoverPreviewContainer, this.dragGuideText]);
   }
 
   private createTopStageDock(): Phaser.GameObjects.Container {
@@ -1634,6 +1542,43 @@ export class GameScene extends Phaser.Scene {
     const container = this.add.container(this.scale.width / 2, narrow ? 140 : 154, [glow, baseShadow, base, inset, label]);
     container.setAlpha(0);
     return container;
+  }
+
+  private createHoverPreview(): Phaser.GameObjects.Container {
+    this.hoverPreviewBg = this.add.rectangle(0, 0, 164, 70, 0x14100c, 0.94).setStrokeStyle(2, 0xb9996d, 0.58);
+    this.hoverPreviewInset = this.add.rectangle(0, 0, 156, 62, 0x241b14, 0.5).setStrokeStyle(1, 0xe8d8bb, 0.1);
+    this.hoverPreviewText = this.add
+      .text(-68, -23, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '10px' : '13px',
+        color: '#f6ead7',
+        lineSpacing: this.isNarrowLayout() ? 1 : 3,
+        wordWrap: { width: this.isNarrowLayout() ? 132 : 154 },
+      })
+      .setOrigin(0, 0);
+
+    const container = this.add.container(0, 0, [this.hoverPreviewBg, this.hoverPreviewInset, this.hoverPreviewText]);
+    container.setDepth(45);
+    container.setVisible(false);
+    container.setAlpha(0);
+    return container;
+  }
+
+  private createDragGuideText(): Phaser.GameObjects.Text {
+    const guide = this.add
+      .text(this.scale.width / 2, this.scale.height * 0.54, '', {
+        fontFamily: FONT_FAMILY,
+        fontSize: this.isNarrowLayout() ? '12px' : '15px',
+        color: '#ffe9c8',
+        fontStyle: 'bold',
+        align: 'center',
+        backgroundColor: 'rgba(15, 23, 37, 0.72)',
+        padding: { left: 12, right: 12, top: 6, bottom: 6 },
+      })
+      .setOrigin(0.5);
+    guide.setVisible(false);
+    guide.setDepth(44);
+    return guide;
   }
 
   private createEndOverlay(width: number, height: number): void {
@@ -2583,6 +2528,91 @@ export class GameScene extends Phaser.Scene {
     return index === -1 ? null : index;
   }
 
+  private canPlayerIssueAction(): boolean {
+    return this.state.phase === 'playing' && this.state.turn.current === 'player' && this.state.turn.started && !this.state.turn.actionTaken;
+  }
+
+  private findCardVisual(handIndex: number, cardId: string): CardVisual | null {
+    return this.cardVisuals.find((entry) => entry.handIndex === handIndex && entry.cardId === cardId) ?? null;
+  }
+
+  private showCardHoverPreview(cardId: string, anchor: Point): void {
+    const card = CARD_BY_ID[cardId];
+    if (!card) {
+      this.hideCardHoverPreview();
+      return;
+    }
+
+    const resourceName = RESOURCE_META[card.domain].resourceName;
+    const owned = this.getPlayerResource(card.domain);
+    const maxWidth = this.isNarrowLayout() ? 146 : 186;
+    this.hoverPreviewText.setText(`${card.name}\n${resourceName} ${owned}/${card.cost}\n${this.formatCardEffectLine(card)}`);
+
+    const width = Phaser.Math.Clamp(this.hoverPreviewText.width + 24, this.isNarrowLayout() ? 132 : 152, maxWidth);
+    const height = this.hoverPreviewText.height + 18;
+    this.hoverPreviewBg.setSize(width, height);
+    this.hoverPreviewInset.setSize(width - 8, height - 8);
+    this.hoverPreviewText.setPosition(-width / 2 + 12, -height / 2 + 8);
+
+    const clampedX = Phaser.Math.Clamp(anchor.x, width / 2 + 10, this.scale.width - width / 2 - 10);
+    const clampedY = Phaser.Math.Clamp(anchor.y, height / 2 + 10, this.scale.height - height / 2 - 10);
+    this.hoverPreviewContainer.setPosition(clampedX, clampedY);
+    this.hoverPreviewContainer.setVisible(true);
+    this.hoverPreviewContainer.setAlpha(1);
+    this.hoverPreviewCardId = cardId;
+  }
+
+  private hideCardHoverPreview(): void {
+    this.hoverPreviewCardId = null;
+    this.hoverPreviewContainer?.setVisible(false);
+    this.hoverPreviewContainer?.setAlpha(0);
+  }
+
+  private showDragGuide(text: string, x: number, y: number): void {
+    this.dragGuideText.setText(text);
+    this.dragGuideText.setPosition(x, y);
+    this.dragGuideText.setVisible(true);
+    this.dragGuideText.setAlpha(1);
+  }
+
+  private hideDragGuide(): void {
+    this.dragGuideText?.setVisible(false);
+    this.dragGuideText?.setAlpha(0);
+  }
+
+  private isPointInPlayDropZone(x: number, y: number): boolean {
+    const centerX = this.scale.width / 2;
+    const topOfTray = this.handSurface.y - this.handSurface.height / 2;
+    return Math.abs(x - centerX) < this.scale.width * 0.24 && y < topOfTray - 16 && y > 130;
+  }
+
+  private shouldDiscardFromDrag(pointer: Phaser.Input.Pointer, gesture: GestureState): boolean {
+    const dx = pointer.x - gesture.x;
+    const dy = pointer.y - gesture.y;
+    return dy > SWIPE_THRESHOLD && dy > Math.abs(dx);
+  }
+
+  private restoreCardVisual(entry: CardVisual): void {
+    this.tweens.killTweensOf(entry.container);
+    const selected = entry.handIndex === this.selectedHandIndex && entry.affordable;
+    entry.container.setAlpha(entry.affordable ? 1 : 0.76);
+    if (this.animationsEnabled) {
+      this.tweens.add({
+        targets: entry.container,
+        x: entry.baseX,
+        y: selected ? entry.baseY - 12 : entry.baseY,
+        scaleX: selected ? 1.04 : 1,
+        scaleY: selected ? 1.04 : 1,
+        duration: animDuration(130),
+        ease: 'Sine.Out',
+      });
+    } else {
+      entry.container.setX(entry.baseX);
+      entry.container.setY(selected ? entry.baseY - 12 : entry.baseY);
+      entry.container.setScale(selected ? 1.04 : 1);
+    }
+  }
+
   private onCardPointerDown(cardId: string, handIndex: number, pointer: Phaser.Input.Pointer): void {
     const event = pointer.event as MouseEvent | PointerEvent | undefined;
     const isRightClick = pointer.button === 2 || pointer.rightButtonDown() || event?.button === 2;
@@ -2592,13 +2622,68 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    const world = this.getCardWorldPosition(cardId, handIndex);
     this.gestureState.set(pointer.id, {
       cardId,
       handIndex,
       x: pointer.x,
       y: pointer.y,
       isTouch: this.isTouchPointer(pointer),
+      dragging: false,
+      offsetX: world ? world.x - pointer.x : 0,
+      offsetY: world ? world.y - pointer.y : 0,
     });
+    this.selectCardAt(handIndex);
+    if (world) {
+      const entry = this.findCardVisual(handIndex, cardId);
+      const previewY = world.y - (entry ? entry.height / 2 + 22 : 78);
+      this.showCardHoverPreview(cardId, { x: world.x, y: previewY });
+    }
+  }
+
+  private onGlobalPointerMove(pointer: Phaser.Input.Pointer): void {
+    const gesture = this.gestureState.get(pointer.id);
+    if (!gesture) {
+      return;
+    }
+
+    const entry = this.findCardVisual(gesture.handIndex, gesture.cardId);
+    if (!entry) {
+      return;
+    }
+
+    const dx = pointer.x - gesture.x;
+    const dy = pointer.y - gesture.y;
+    if (!gesture.dragging && Math.hypot(dx, dy) < DRAG_START_THRESHOLD) {
+      return;
+    }
+
+    gesture.dragging = true;
+    this.draggingCardId = gesture.cardId;
+    this.handCardsContainer.bringToTop(entry.container);
+    this.tweens.killTweensOf(entry.container);
+
+    const localX = pointer.x + gesture.offsetX - this.handCardsContainer.x;
+    const localY = pointer.y + gesture.offsetY - this.handCardsContainer.y;
+    entry.container.setPosition(localX, localY);
+    entry.container.setScale(entry.affordable ? 1.08 : 1.04);
+    entry.container.setAlpha(entry.affordable ? 1 : 0.86);
+
+    const worldX = pointer.x + gesture.offsetX;
+    const worldY = pointer.y + gesture.offsetY;
+    this.showCardHoverPreview(gesture.cardId, { x: worldX, y: worldY - entry.height / 2 - 24 });
+
+    if (this.canPlayerIssueAction() && entry.affordable && this.isPointInPlayDropZone(pointer.x, pointer.y)) {
+      this.showDragGuide('Release to play', this.scale.width / 2, this.isNarrowLayout() ? this.scale.height * 0.57 : this.scale.height * 0.53);
+    } else if (this.canPlayerIssueAction() && this.shouldDiscardFromDrag(pointer, gesture)) {
+      this.showDragGuide(
+        'Release to discard',
+        this.scale.width / 2,
+        this.handSurface.y + this.handSurface.height / 2 - (this.isNarrowLayout() ? 56 : 42),
+      );
+    } else {
+      this.hideDragGuide();
+    }
   }
 
   private onGlobalPointerUp(pointer: Phaser.Input.Pointer): void {
@@ -2607,15 +2692,49 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.gestureState.delete(pointer.id);
+    this.draggingCardId = null;
 
     const dx = pointer.x - gesture.x;
     const dy = pointer.y - gesture.y;
+    const entry = this.findCardVisual(gesture.handIndex, gesture.cardId);
+    const playByDrop = !!entry && entry.affordable && this.canPlayerIssueAction() && this.isPointInPlayDropZone(pointer.x, pointer.y);
+    const discardByDrag = this.canPlayerIssueAction() && this.shouldDiscardFromDrag(pointer, gesture);
+    this.hideDragGuide();
+
+    if (playByDrop) {
+      this.hideCardHoverPreview();
+      this.tryPlayCard(gesture.cardId, gesture.handIndex);
+      return;
+    }
+
+    if (discardByDrag) {
+      this.hideCardHoverPreview();
+      this.tryDiscardCard(gesture.cardId, gesture.handIndex);
+      return;
+    }
+
+    if (gesture.dragging) {
+      if (entry) {
+        this.restoreCardVisual(entry);
+      }
+      if (!gesture.isTouch) {
+        this.hideCardHoverPreview();
+      }
+      if (gesture.isTouch) {
+        this.selectCardAt(gesture.handIndex);
+      }
+      return;
+    }
 
     if (Math.abs(dy) > SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
-      if (dy < 0) {
+      if (dy < 0 && entry?.affordable) {
+        this.hideCardHoverPreview();
         this.tryPlayCard(gesture.cardId, gesture.handIndex);
-      } else {
+      } else if (dy > 0) {
+        this.hideCardHoverPreview();
         this.tryDiscardCard(gesture.cardId, gesture.handIndex);
+      } else if (entry) {
+        this.restoreCardVisual(entry);
       }
       return;
     }
@@ -2625,6 +2744,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    this.hideCardHoverPreview();
     this.tryPlayCard(gesture.cardId, gesture.handIndex);
   }
 
@@ -2634,6 +2754,24 @@ export class GameScene extends Phaser.Scene {
       return event.pointerType === 'touch' || event.pointerType === 'pen';
     }
     return pointer.wasTouch;
+  }
+
+  private onCardPointerOver(cardId: string, handIndex: number): void {
+    this.selectCardAt(handIndex);
+    const entry = this.findCardVisual(handIndex, cardId);
+    const world = this.getCardWorldPosition(cardId, handIndex);
+    if (!entry || !world || this.draggingCardId) {
+      return;
+    }
+    this.showCardHoverPreview(cardId, { x: world.x, y: world.y - entry.height / 2 - 22 });
+  }
+
+  private onCardPointerOut(pointer: Phaser.Input.Pointer): void {
+    if (this.draggingCardId || this.isTouchPointer(pointer)) {
+      return;
+    }
+    this.hideCardHoverPreview();
+    this.refreshCardSelection();
   }
 
   private tryPlayCard(cardId: string, handIndex?: number): void {
@@ -2740,7 +2878,7 @@ export class GameScene extends Phaser.Scene {
   private selectCardAt(handIndex: number | null): void {
     if (handIndex === null) {
       this.clearSelectedCard();
-      this.updateCardPreview();
+      this.hideCardHoverPreview();
       this.refreshCardSelection();
       return;
     }
@@ -2748,14 +2886,13 @@ export class GameScene extends Phaser.Scene {
     const cardId = this.state.players.player.hand[handIndex];
     if (!cardId) {
       this.clearSelectedCard();
-      this.updateCardPreview();
+      this.hideCardHoverPreview();
       this.refreshCardSelection();
       return;
     }
 
     this.selectedHandIndex = handIndex;
     this.selectedCardId = cardId;
-    this.updateCardPreview(cardId);
     this.refreshCardSelection();
   }
 
@@ -2842,9 +2979,7 @@ export class GameScene extends Phaser.Scene {
           ? 'Victory secured.'
           : 'Defeat. The tower fell.'
         : this.state.turn.current === 'player'
-          ? this.selectedCardId
-            ? 'Play a full-color card. Discard cycles selected.'
-            : 'Choose a card from hand.'
+          ? 'Click a full-color card or drag it to center. Drag down discards.'
           : this.aiRevealCountdownMs !== null && this.aiPendingAction?.type === 'play_card'
             ? `Red reveals ${CARD_BY_ID[this.aiPendingAction.cardId]?.name ?? 'a card'}.`
             : this.aiSelectionCountdownMs !== null && this.aiPendingAction
@@ -2905,20 +3040,16 @@ export class GameScene extends Phaser.Scene {
     this.handHintText.setText(
       this.state.turn.current === 'player'
         ? narrow
-          ? 'Tap card\nPlay / discard below'
-          : 'Enter plays selected | Backspace discards'
+          ? 'Drag to center to play\nDrag down to discard'
+          : 'Click to play | Drag to center to play | Drag down to discard'
         : narrow
           ? 'Opponent turn'
           : 'Opponent turn: watch the top strip',
     );
 
+    this.hideCardHoverPreview();
+    this.hideDragGuide();
     this.rebuildHand();
-
-    if (this.selectedCardId && CARD_BY_ID[this.selectedCardId]) {
-      this.updateCardPreview(this.selectedCardId);
-    } else {
-      this.updateCardPreview();
-    }
 
     if (this.state.phase === 'ended') {
       this.endOverlayText.setText(this.state.winner === 'player' ? 'Victory' : 'Defeat');
@@ -3062,13 +3193,10 @@ export class GameScene extends Phaser.Scene {
 
       const hit = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x000000, 0).setInteractive({ useHandCursor: affordable });
       hit.on('pointerover', () => {
-        this.selectCardAt(index);
+        this.onCardPointerOver(cardId, index);
       });
-      hit.on('pointerout', () => {
-        if (this.isTouchPointer(this.input.activePointer)) {
-          return;
-        }
-        this.refreshCardSelection();
+      hit.on('pointerout', (pointer: Phaser.Input.Pointer) => {
+        this.onCardPointerOut(pointer);
       });
       hit.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
         this.onCardPointerDown(cardId, index, pointer);
@@ -3098,6 +3226,7 @@ export class GameScene extends Phaser.Scene {
         height: cardHeight,
         domain: card.domain,
         affordable,
+        baseX: x,
         baseY: y,
       });
     });
@@ -3111,6 +3240,7 @@ export class GameScene extends Phaser.Scene {
       if (this.animationsEnabled) {
         this.tweens.add({
           targets: entry.container,
+          x: entry.baseX,
           y: selected ? entry.baseY - 12 : entry.baseY,
           scaleX: selected ? 1.04 : 1,
           scaleY: selected ? 1.04 : 1,
@@ -3118,6 +3248,7 @@ export class GameScene extends Phaser.Scene {
           ease: 'Sine.Out',
         });
       } else {
+        entry.container.setX(entry.baseX);
         entry.container.setY(selected ? entry.baseY - 12 : entry.baseY);
         entry.container.setScale(selected ? 1.04 : 1);
       }
@@ -3207,54 +3338,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private setActionButtonEnabled(button: ActionButtonRefs, enabled: boolean, fill: number): void {
-    button.bg.setFillStyle(enabled ? fill : 0x39414d, enabled ? 0.96 : 0.54);
-    button.bg.setStrokeStyle(2, enabled ? THEME.gold : 0x7e8897, enabled ? 0.82 : 0.46);
-    button.text.setAlpha(enabled ? 1 : 0.55);
-    button.container.setAlpha(enabled ? 1 : 0.72);
-  }
-
-  private updateActionPanel(card: CardDefinition | null, affordable = false): void {
-    if (!this.actionPanelContainer) {
-      return;
-    }
-
-    const canAct = this.state.phase === 'playing' && this.state.turn.current === 'player' && this.state.turn.started && !this.state.turn.actionTaken;
-    if (!card) {
-      this.actionPanelTitleText.setText('Select a card');
-      this.actionPanelStatusText.setText('Hover or tap a card');
-      this.setActionButtonEnabled(this.playActionButton, false, 0x2f8f5d);
-      this.setActionButtonEnabled(this.discardActionButton, false, 0x8b4f3e);
-      return;
-    }
-
-    const owned = this.getPlayerResource(card.domain);
-    const shortfall = Math.max(0, card.cost - owned);
-    this.actionPanelTitleText.setText(card.name);
-    this.actionPanelStatusText.setText(
-      affordable ? `Ready: ${card.cost} ${RESOURCE_META[card.domain].resourceName}` : `Need ${shortfall} more ${RESOURCE_META[card.domain].resourceName}`,
-    );
-    this.setActionButtonEnabled(this.playActionButton, canAct && affordable, 0x2f8f5d);
-    this.setActionButtonEnabled(this.discardActionButton, canAct, 0x8b4f3e);
-  }
-
-  private updateCardPreview(cardId?: string): void {
-    const selected = cardId ? CARD_BY_ID[cardId] : null;
-    if (!selected) {
-      this.handPreviewText.setText('Selected card\nChoose a hand slot.');
-      this.updateActionPanel(null);
-      return;
-    }
-
-    const affordable = canAffordCard(this.state, 'player', selected.id);
-    const resourceName = RESOURCE_META[selected.domain].resourceName;
-    const owned = this.getPlayerResource(selected.domain);
-    this.handPreviewText.setText(
-      `${selected.name}\n${resourceName} ${owned}/${selected.cost}\n${this.formatCardEffectLine(selected)}`,
-    );
-    this.updateActionPanel(selected, affordable);
-  }
-
   private getCardWorldPosition(cardId: string, handIndex?: number): Point | null {
     const visual =
       handIndex === undefined
@@ -3318,6 +3401,8 @@ export class GameScene extends Phaser.Scene {
       selectedCardName: selectedCard?.name ?? null,
       selectedCardPlayable: selectedCard ? canAffordCard(this.state, 'player', selectedCard.id) : false,
       selectedCardImpact: selectedCard ? this.formatCardEffectLine(selectedCard) : null,
+      hoverPreviewCardId: this.hoverPreviewCardId,
+      draggingCardId: this.draggingCardId,
       bottomHudLayout: this.bottomHudLayoutMode,
       topStageMode: this.topStageMode,
       topStageCardId: this.topStageCardId,

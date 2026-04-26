@@ -117,3 +117,10 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Updated automation state output so `render_game_to_text().ui` now exposes `bottomHudLayout`, `topStageMode`, and `topStageCardId` alongside the existing deck/discard and enemy-hand fields.
 - Synced `specs/09-ui.md`, `specs/03-technical-architecture.md`, `card_tower_game.md`, and `README.md` to the refined card-first layout and reveal-stage language.
 - Validation: `npm run lint`, `npm test`, `npm run build`, plus desktop and narrow Playwright smoke captures under `output/card-first-final-desktop/` and `output/card-first-final-mobile/`.
+
+## Bottom Tray Drag Pass
+- Removed the fixed bottom left/right command boxes and widened the hand tray so the cards own the whole lower interaction area.
+- Added hover/drag detail popups for card name, current resource ownership versus cost, and effect summary instead of a persistent selected-card panel.
+- Added drag-to-center play and drag-down discard while keeping click-to-play, right-click discard, and keyboard shortcuts as secondary inputs.
+- Added dev-state fields `hoverPreviewCardId` and `draggingCardId` to `render_game_to_text().ui` for smoke-test visibility into the transient tray interactions.
+- Updated the UI docs and README to describe the drag-first bottom tray.
