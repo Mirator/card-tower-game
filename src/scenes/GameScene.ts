@@ -30,17 +30,9 @@ interface PlayerPanelRefs {
 
 interface TowerVisualRefs {
   container: Phaser.GameObjects.Container;
-  windows: Phaser.GameObjects.Rectangle[];
   body: Phaser.GameObjects.Rectangle;
   roof: Phaser.GameObjects.Triangle;
-  shadow: Phaser.GameObjects.Ellipse;
-  flash: Phaser.GameObjects.Rectangle;
-  glow: Phaser.GameObjects.Ellipse;
-  dangerGlow: Phaser.GameObjects.Ellipse;
-  wallShield: Phaser.GameObjects.Rectangle;
-  wallValueText: Phaser.GameObjects.Text;
-  towerValueText: Phaser.GameObjects.Text;
-  progressFill: Phaser.GameObjects.Rectangle;
+  wallLine: Phaser.GameObjects.Rectangle;
   baseBodyHeight: number;
 }
 
@@ -122,6 +114,11 @@ const ANIMATION_PACE = 1.5;
 const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
 const ENEMY_CARD_SELECTION_MS = 540;
 const ENEMY_CARD_REVEAL_MS = 2200;
+const WALL_VISUAL_CAP = 30;
+const WALL_MAX_HEIGHT = 140;
+const WALL_LINE_WIDTH = 8;
+const CASTLE_MIN_HEIGHT = 132;
+const CASTLE_MAX_HEIGHT = 276;
 
 const FONT_FAMILY = 'Georgia';
 
@@ -1439,8 +1436,8 @@ export class GameScene extends Phaser.Scene {
     stage.lineBetween(width / 2 - spacing + 74 * towerScale, centerY - 42 * towerScale, width / 2 + spacing - 74 * towerScale, centerY - 42 * towerScale);
     this.towerContainer.add(stage);
 
-    this.playerTowerVisual = this.createTowerVisual(width / 2 - spacing, centerY, 0x5e7ea9, 'Black', towerScale);
-    this.aiTowerVisual = this.createTowerVisual(width / 2 + spacing, centerY, 0x9f615a, 'Red', towerScale);
+    this.playerTowerVisual = this.createTowerVisual(width / 2 - spacing, centerY, 0x5e7ea9, 'left', towerScale);
+    this.aiTowerVisual = this.createTowerVisual(width / 2 + spacing, centerY, 0x9f615a, 'right', towerScale);
 
     const versusText = this.add
       .text(width / 2, centerY - 92 * towerScale, 'VS', {
@@ -1454,16 +1451,20 @@ export class GameScene extends Phaser.Scene {
     this.towerContainer.add(versusText);
   }
 
-  private createTowerVisual(x: number, y: number, baseColor: number, label: string, scale = 1): TowerVisualRefs {
+  private createTowerVisual(
+    x: number,
+    y: number,
+    baseColor: number,
+    side: 'left' | 'right',
+    scale = 1,
+  ): TowerVisualRefs {
     const container = this.add.container(x, y).setScale(scale);
     const baseBodyHeight = 242;
 
-    const dangerGlow = this.add.ellipse(0, -124, 220, 296, 0xff6f5f, 0).setVisible(false);
-    const shadow = this.add.ellipse(0, 14, 170, 42, 0x040a12, 0.36);
-    const wallShield = this.add
-      .rectangle(0, 8, 184, 46, 0x94c7e3, 0.16)
+    const wallLine = this.add
+      .rectangle(side === 'left' ? 84 : -84, 0, WALL_LINE_WIDTH, 24, 0xf2b08f, 0.95)
       .setOrigin(0.5, 1)
-      .setStrokeStyle(3, 0xbde6ff, 0.72);
+      .setStrokeStyle(1, 0xffd5b8, 0.92);
     const body = this.add
       .rectangle(0, 0, 132, baseBodyHeight, baseColor, 0.95)
       .setStrokeStyle(3, 0xe0d5c2)
@@ -1471,77 +1472,14 @@ export class GameScene extends Phaser.Scene {
 
     const roof = this.add.triangle(0, -baseBodyHeight, 0, 0, 66, 34, -66, 34, 0x7b4b43, 0.95).setStrokeStyle(2, 0xd9c8b5);
 
-    const glow = this.add.ellipse(0, -118, 170, 260, 0x7de0b4, 0.18).setVisible(false);
-    const flash = this.add.rectangle(0, -baseBodyHeight + 4, 128, baseBodyHeight - 8, 0xee6a6a, 0).setOrigin(0.5, 0);
-
-    const progressBack = this.add
-      .rectangle(92, -12, 12, 214, 0x152132, 0.88)
-      .setStrokeStyle(1, 0xd7c9ad, 0.65)
-      .setOrigin(0.5, 1);
-    const progressFill = this.add.rectangle(92, -12, 12, 120, THEME.gold, 0.92).setOrigin(0.5, 1);
-
-    const towerValueText = this.add
-      .text(0, -baseBodyHeight - 44, 'Castle 30', {
-        fontFamily: FONT_FAMILY,
-        fontSize: '18px',
-        color: '#fff2d4',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-
-    const wallValueText = this.add
-      .text(0, -58, 'Wall 10', {
-        fontFamily: FONT_FAMILY,
-        fontSize: '15px',
-        color: '#dff2ff',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setVisible(false);
-
-    const labelText = this.add
-      .text(0, 16, label, {
-        fontFamily: FONT_FAMILY,
-        fontSize: '20px',
-        color: '#f0ecdf',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0)
-      .setVisible(false);
-
-    const windows: Phaser.GameObjects.Rectangle[] = [];
-    const windowRows = 4;
-    const windowCols = 3;
-    const windowTopPadding = 58;
-    const windowBottomPadding = 42;
-    const windowSpan = baseBodyHeight - windowTopPadding - windowBottomPadding;
-    const rowGap = windowRows > 1 ? windowSpan / (windowRows - 1) : 0;
-    for (let row = 0; row < windowRows; row += 1) {
-      for (let col = 0; col < windowCols; col += 1) {
-        const windowRect = this.add
-          .rectangle(-34 + col * 34, -(windowBottomPadding + row * rowGap), 18, 24, 0x2a3550, 0.9)
-          .setStrokeStyle(1, 0xb2c3d8);
-        windows.push(windowRect);
-      }
-    }
-
-    container.add([dangerGlow, shadow, glow, wallShield, body, roof, progressBack, progressFill, ...windows, flash, towerValueText, wallValueText, labelText]);
+    container.add([body, roof, wallLine]);
     this.towerContainer.add(container);
 
     return {
       container,
-      windows,
       body,
       roof,
-      shadow,
-      flash,
-      glow,
-      dangerGlow,
-      wallShield,
-      wallValueText,
-      towerValueText,
-      progressFill,
+      wallLine,
       baseBodyHeight,
     };
   }
@@ -2414,21 +2352,22 @@ export class GameScene extends Phaser.Scene {
   private animateTowerDamage(playerId: PlayerId): void {
     const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
     this.tweens.killTweensOf(tower.container);
-    this.tweens.killTweensOf(tower.flash);
-
-    tower.flash.setAlpha(0.58);
+    this.tweens.killTweensOf(tower.body);
+    const baseX = tower.container.x;
+    tower.body.setAlpha(0.78);
 
     this.tweens.add({
       targets: tower.container,
-      x: tower.container.x + 6,
+      x: baseX + 6,
       yoyo: true,
       repeat: 3,
       duration: animDuration(36),
       ease: 'Sine.InOut',
       onComplete: () => {
+        tower.container.x = baseX;
         this.tweens.add({
-          targets: tower.flash,
-          alpha: 0,
+          targets: tower.body,
+          alpha: 0.95,
           duration: animDuration(180),
           ease: 'Sine.Out',
         });
@@ -2438,21 +2377,21 @@ export class GameScene extends Phaser.Scene {
 
   private animateTowerHeal(playerId: PlayerId): void {
     const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
-    this.tweens.killTweensOf(tower.glow);
-
-    tower.glow.setVisible(true);
-    tower.glow.setAlpha(0.08);
-    tower.glow.setScale(0.82);
+    this.tweens.killTweensOf(tower.container);
+    const baseScaleX = tower.container.scaleX;
+    const baseScaleY = tower.container.scaleY;
+    tower.body.setAlpha(0.92);
 
     this.tweens.add({
-      targets: tower.glow,
-      alpha: 0,
-      scaleX: 1.24,
-      scaleY: 1.24,
-      duration: animDuration(460),
+      targets: tower.container,
+      scaleX: baseScaleX * 1.04,
+      scaleY: baseScaleY * 1.04,
+      yoyo: true,
+      duration: animDuration(240),
       ease: 'Sine.Out',
       onComplete: () => {
-        tower.glow.setVisible(false);
+        tower.container.setScale(baseScaleX, baseScaleY);
+        tower.body.setAlpha(0.95);
       },
     });
   }
@@ -3185,8 +3124,6 @@ export class GameScene extends Phaser.Scene {
     this.turnIndicatorAi.setScale(aiTurn ? 1.12 : 1);
     this.topInfoGlow.setStrokeStyle(3, playerTurn ? 0x89b5ff : aiTurn ? 0xf3a59f : 0x85b5eb, 0.9);
 
-    this.updateTowerWindows(this.playerTowerVisual, player.tower, this.state.winTower);
-    this.updateTowerWindows(this.aiTowerVisual, ai.tower, this.state.winTower);
     this.updateTowerPressure(this.playerTowerVisual, player.tower, player.wall, this.state.winTower);
     this.updateTowerPressure(this.aiTowerVisual, ai.tower, ai.wall, this.state.winTower);
 
@@ -3220,67 +3157,24 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private updateTowerWindows(tower: TowerVisualRefs, towerValue: number, winTower: number): void {
-    const litCount = Phaser.Math.Clamp(Math.round((towerValue / winTower) * tower.windows.length), 0, tower.windows.length);
-
-    tower.windows.forEach((windowRect, index) => {
-      if (index < litCount) {
-        windowRect.setFillStyle(0xf4e79e, 0.96);
-      } else {
-        windowRect.setFillStyle(0x2a3550, 0.9);
-      }
-    });
-  }
-
   private updateTowerPressure(tower: TowerVisualRefs, towerValue: number, wallValue: number, winTower: number): void {
-    const towerRatio = Phaser.Math.Clamp(towerValue / winTower, 0, 1);
+    const castleRatio = Phaser.Math.Clamp(towerValue / winTower, 0, 1);
+    const castleHeight = Phaser.Math.Linear(CASTLE_MIN_HEIGHT, CASTLE_MAX_HEIGHT, castleRatio);
     const wallSafeValue = Math.max(0, wallValue);
-    const wallCurve = 1 - Math.exp(-wallSafeValue / 18);
-    const bodyMinHeight = tower.baseBodyHeight * 0.68;
-    const bodyMaxHeight = tower.baseBodyHeight * 1.14;
-    const bodyHeight = Phaser.Math.Linear(bodyMinHeight, bodyMaxHeight, Math.pow(towerRatio, 0.85));
-    const danger = towerValue <= Math.ceil(winTower * 0.35);
-    const windowRows = 4;
-    const windowCols = 3;
-    const windowTopPadding = Phaser.Math.Clamp(bodyHeight * 0.24, 44, 76);
-    const windowBottomPadding = Phaser.Math.Clamp(bodyHeight * 0.16, 30, 56);
-    const windowSpan = Math.max(52, bodyHeight - windowTopPadding - windowBottomPadding);
-    const windowRowGap = windowRows > 1 ? windowSpan / (windowRows - 1) : 0;
-    let windowIndex = 0;
-    for (let row = 0; row < windowRows; row += 1) {
-      for (let col = 0; col < windowCols; col += 1) {
-        tower.windows[windowIndex]?.setPosition(-34 + col * 34, -(windowBottomPadding + row * windowRowGap));
-        windowIndex += 1;
-      }
+
+    tower.body.displayHeight = castleHeight;
+    tower.roof.y = -castleHeight;
+
+    if (wallSafeValue <= 0) {
+      tower.wallLine.setVisible(false);
+      return;
     }
 
-    const wallHeight = wallSafeValue > 0 ? 12 + wallCurve * 120 : 10;
-    const wallWidth = wallSafeValue > 0 ? 152 + wallCurve * 58 : 148;
-    const wallTop = 8 - wallHeight;
-
-    tower.body.displayHeight = bodyHeight;
-    tower.roof.y = -bodyHeight;
-    tower.shadow.setSize(158 + towerRatio * 20, 40 + towerRatio * 4);
-    tower.flash.y = -bodyHeight + 4;
-    tower.flash.displayHeight = Math.max(42, bodyHeight - 8);
-    tower.glow.y = -bodyHeight * 0.5;
-    tower.glow.setSize(170, Math.max(196, bodyHeight + 20));
-    tower.dangerGlow.y = -bodyHeight * 0.52;
-    tower.dangerGlow.setSize(220, Math.max(238, bodyHeight + 74));
-    tower.towerValueText.setY(-bodyHeight - 44);
-    tower.wallShield.displayHeight = wallHeight;
-    tower.wallShield.displayWidth = wallWidth;
-    tower.wallShield.setAlpha(wallSafeValue > 0 ? 0.18 + wallCurve * 0.34 : 0.05);
-    tower.wallShield.setStrokeStyle(3, 0xbde6ff, wallSafeValue > 0 ? 0.56 + wallCurve * 0.26 : 0.2);
-    tower.wallValueText.setY(wallSafeValue > 0 ? Math.max(-bodyHeight + 20, wallTop - 14) : -48);
-
-    tower.towerValueText.setText(`Castle ${towerValue}/${winTower}`);
-    tower.wallValueText.setText(wallValue > 0 ? `Wall ${wallValue}` : 'Wall down');
-    tower.progressFill.displayHeight = Math.max(8, 214 * towerRatio);
-    tower.progressFill.setFillStyle(towerRatio >= 0.78 ? 0x94f0a6 : danger ? 0xff8a70 : THEME.gold, 0.92);
-    tower.wallValueText.setColor(wallValue > 0 ? '#dff2ff' : '#ffb7a8');
-    tower.dangerGlow.setVisible(danger);
-    tower.dangerGlow.setAlpha(danger ? 0.18 : 0);
+    const wallRatio = Phaser.Math.Clamp(wallSafeValue / WALL_VISUAL_CAP, 0, 1);
+    const wallHeight = Math.max(6, WALL_MAX_HEIGHT * wallRatio);
+    tower.wallLine.setVisible(true);
+    tower.wallLine.displayWidth = WALL_LINE_WIDTH;
+    tower.wallLine.displayHeight = wallHeight;
   }
 
   private rebuildHand(animateEntry = false): void {
