@@ -14,7 +14,7 @@
 - Overlay layer: floating damage/resource text, played-card travel, and match-end overlay
 
 ### Implemented systems
-- Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, card play/discard, refill, effect resolution, statuses, and victory.
+- Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, next-turn hand refill, card play/discard, effect resolution, statuses, and victory.
 - Card definitions in `src/game/cards.ts` remain the authoritative lookup table; `STARTER_DECK_CARD_IDS` is the active 30-card physical deck composition.
 - Card definitions may include a visual-only `illustrationKey` so the scene can render simple, explicit card art without changing gameplay behavior.
 - Duplicate card copies are represented by repeated ids in each player's draw pile, discard pile, and hand.

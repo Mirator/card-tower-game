@@ -5,6 +5,7 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 ## Features
 - 30-card basic v1 deck with duplicate physical copies
 - Discard pile reshuffles into the draw pile when the deck runs out
+- Played cards refill back to hand only at the start of that side's next turn
 - Deterministic reducer-based turn engine
 - AI opponent with lethal/prevent-lethal/heuristic priorities
 - Boot/Menu/Game scene flow with rematch loop

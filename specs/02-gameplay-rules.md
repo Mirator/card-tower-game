@@ -7,13 +7,13 @@ Each side has:
 - Resources: Bricks, Weapons, Crystals
 - Generators: Quarry, Barracks, Magic
 - A 30-card physical deck with duplicate basic cards
-- Hand of cards, refilled to size 6 at the end of that side's turn
+- Hand of cards, refilled to size 6 at the start of that side's next turn
 
 Turn:
-1. Gain resources from generators, unless a skip-gain status is active
+1. Start turn: refill hand up to 6 cards, then gain resources from generators unless a skip-gain status is active
 2. Play 1 card **or** discard 1 card
 3. Resolve card or discard effects
-4. Refill hand up to 6 cards
+4. End turn
 5. Check victory
 6. Pass turn
 
@@ -32,7 +32,9 @@ Victory:
 
 ## Turn structure
 ### Start
-+Bricks = Quarry, +Weapons = Barracks, +Crystals = Magic.
+- Refill hand up to 6 cards
+- If the draw pile is empty during refill, shuffle that player's discard pile into a new draw pile and continue drawing
+- +Bricks = Quarry, +Weapons = Barracks, +Crystals = Magic.
 
 Start-of-turn statuses resolve before resource gain:
 - Curse removes tower and decrements its remaining turns
@@ -44,8 +46,6 @@ Start-of-turn statuses resolve before resource gain:
 - If the draw pile is empty, shuffle that player's discard pile into a new draw pile and continue drawing
 
 ### End
-- Refill that side's hand up to 6 cards
-- If the draw pile is empty during refill, shuffle that player's discard pile into a new draw pile and continue drawing
 - Check win
 - Switch player
 

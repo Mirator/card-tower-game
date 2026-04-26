@@ -33,13 +33,13 @@ Each side has:
 - Resources: Bricks, Weapons, Crystals
 - Generators: Quarry, Barracks, Magic
 - A 30-card physical deck with duplicate basic cards
-- Hand of cards, refilled to size 6 at the end of that side's turn
+- Hand of cards, refilled to size 6 at the start of that side's next turn
 
 Turn:
-1. Gain resources from generators, unless a skip-gain status is active
+1. Start turn: refill hand up to 6 cards, then gain resources from generators unless a skip-gain status is active
 2. Play 1 card **or** discard 1 card
 3. Resolve card or discard effects
-4. Refill hand up to 6 cards
+4. End turn
 5. Check victory
 6. Pass turn
 
@@ -58,7 +58,9 @@ Victory:
 
 ## Turn structure
 ### Start
-+Bricks = Quarry, +Weapons = Barracks, +Crystals = Magic.
+- Refill hand up to 6 cards
+- If the draw pile is empty during refill, shuffle that player's discard pile into a new draw pile and continue drawing
+- +Bricks = Quarry, +Weapons = Barracks, +Crystals = Magic.
 
 ### Action
 - Play 1 card, if affordable
@@ -66,8 +68,6 @@ Victory:
 - If the draw pile is empty, shuffle that player's discard pile into a new draw pile and continue drawing
 
 ### End
-- Refill that side's hand up to 6 cards
-- If the draw pile is empty during refill, shuffle that player's discard pile into a new draw pile and continue drawing
 - Check win
 - Switch player
 
@@ -93,7 +93,7 @@ Victory:
 - GameScene: main gameplay, layout, input, animation, AI turn pacing, rematch flow, and automation bridge
 
 ### Implemented systems
-- Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, card play/discard, refill, effect resolution, statuses, and victory.
+- Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, next-turn hand refill, card play/discard, effect resolution, statuses, and victory.
 - Card definitions in `src/game/cards.ts` remain the authoritative lookup table; `STARTER_DECK_CARD_IDS` is the active 30-card physical deck composition.
 - Duplicate card copies are represented by repeated ids in each player's draw pile, discard pile, and hand.
 - Player play/discard actions may include `handIndex` so duplicate copies in hand can be targeted safely.

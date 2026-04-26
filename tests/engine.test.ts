@@ -13,7 +13,7 @@ function withPlayerTurn(state: GameState): GameState {
 }
 
 describe('game engine', () => {
-  it('spends resources and refills hand after a normal turn', () => {
+  it('spends resources and refills hand at the start of the next turn', () => {
     const rng = new SeededRng(1001);
     let state = createInitialGameState(1001);
 
@@ -29,9 +29,18 @@ describe('game engine', () => {
 
     const end = reduceGameState(play.state, { type: 'end_turn' }, rng);
     expect(end.errors).toEqual([]);
-    expect(end.state.players.player.hand.length).toBe(6);
+    expect(end.state.players.player.hand.length).toBe(0);
     expect(end.state.turn.current).toBe('ai');
     expect(end.state.turn.started).toBe(false);
+
+    const nextPlayerTurn = cloneGameState(end.state);
+    nextPlayerTurn.turn.current = 'player';
+    nextPlayerTurn.turn.started = false;
+    nextPlayerTurn.turn.actionTaken = false;
+
+    const started = reduceGameState(nextPlayerTurn, { type: 'start_turn' }, rng);
+    expect(started.errors).toEqual([]);
+    expect(started.state.players.player.hand.length).toBe(6);
   });
 
   it('applies barrier and fortify reductions in damage pipeline', () => {
@@ -189,7 +198,7 @@ describe('game engine', () => {
     expect(state.players.ai.hand.length + state.players.ai.deck.length).toBe(30);
   });
 
-  it('reshuffles discard into the deck when the draw pile is empty', () => {
+  it('reshuffles discard into the deck when the draw pile is empty during next-turn refill', () => {
     const rng = new SeededRng(8181);
     let state = withPlayerTurn(createInitialGameState(8181));
 
@@ -203,10 +212,21 @@ describe('game engine', () => {
 
     const end = reduceGameState(play.state, { type: 'end_turn' }, rng);
     expect(end.errors).toEqual([]);
-    expect(end.state.players.player.hand.length).toBe(6);
+    expect(end.state.players.player.hand.length).toBe(4);
     expect(end.state.players.player.deck.length).toBe(0);
-    expect(end.state.players.player.discard.length).toBe(0);
-    expect(end.state.players.player.hand).toEqual(expect.arrayContaining(['strike', 'zap']));
+    expect(end.state.players.player.discard.length).toBe(2);
+
+    const nextPlayerTurn = cloneGameState(end.state);
+    nextPlayerTurn.turn.current = 'player';
+    nextPlayerTurn.turn.started = false;
+    nextPlayerTurn.turn.actionTaken = false;
+
+    const started = reduceGameState(nextPlayerTurn, { type: 'start_turn' }, rng);
+    expect(started.errors).toEqual([]);
+    expect(started.state.players.player.hand.length).toBe(6);
+    expect(started.state.players.player.deck.length).toBe(0);
+    expect(started.state.players.player.discard.length).toBe(0);
+    expect(started.state.players.player.hand).toEqual(expect.arrayContaining(['strike', 'zap']));
   });
 
   it('targets duplicate hand slots by index for play and discard', () => {

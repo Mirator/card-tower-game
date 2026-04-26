@@ -137,6 +137,13 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Re-centered the player hand cards vertically inside the bottom tray instead of letting the row sit too low against the controls hint.
 - Softened the disabled-card treatment by lightening the neutral paper face, easing the gray border/seam contrast, and raising disabled card alpha so unaffordable cards remain readable while still clearly inactive.
 
+## Next-Turn Refill Timing
+- Moved normal hand refill from `end_turn` to `start_turn`, so playing a card leaves the acting side at 5 cards through the opponent turn and only refills when that side's next turn actually begins.
+- Kept discard cycling unchanged: discard still draws 1 immediately.
+- Updated engine tests to cover the delayed refill timing and discard-reshuffle behavior during next-turn refill.
+- Updated gameplay/spec docs to describe refill as part of turn start instead of turn end.
+- Verified with `npm run lint`, `npm test`, and a browser trace in `output/next-turn-refill/` showing 5 visible player cards during the AI turn and 6 again on the player's returned turn.
+
 ## Audit Fix Implementation
 - Hardened local meta persistence so blocked/quota-limited `localStorage.setItem` calls no longer crash menu toggles or match-end stat updates.
 - Removed the undocumented `window.__phaserGame` automation global; committed hooks now match the documented `render_game_to_text`, `advanceTime`, and scene-owned `__game.interact` surface.

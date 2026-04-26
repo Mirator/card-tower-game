@@ -170,7 +170,7 @@ export function listPlayableCards(state: GameState, playerId: PlayerId): string[
   return state.players[playerId].hand.filter((cardId) => canAffordCard(state, playerId, cardId));
 }
 
-function applyStartOfTurn(state: GameState, playerId: PlayerId, logs: string[]): void {
+function applyStartOfTurn(state: GameState, playerId: PlayerId, logs: string[], rng: RandomSource): void {
   const player = state.players[playerId];
 
   if (player.statuses.curseTurns > 0) {
@@ -192,6 +192,10 @@ function applyStartOfTurn(state: GameState, playerId: PlayerId, logs: string[]):
     logs.push(
       `${playerId === 'player' ? 'You gain' : 'AI gains'} +${player.quarry} bricks, +${player.barracks} weapons, +${player.magic} crystals.`,
     );
+  }
+  const drawn = drawUpToHand(player, HAND_SIZE, rng);
+  if (drawn.length > 0) {
+    logs.push(`${playerId === 'player' ? 'You' : 'AI'} draw ${drawn.length} card${drawn.length === 1 ? '' : 's'} to refill.`);
   }
 
   normalizeTower(player, state.winTower);
@@ -761,14 +765,9 @@ function removeCardFromHand(player: PlayerState, cardId: string, handIndex?: num
   return true;
 }
 
-function finishActorTurn(state: GameState, logs: string[], rng: RandomSource): void {
+function finishActorTurn(state: GameState, logs: string[]): void {
   const actorId = state.turn.current;
   const actor = state.players[actorId];
-
-  const drawn = drawUpToHand(actor, HAND_SIZE, rng);
-  if (drawn.length > 0) {
-    logs.push(`${actorId === 'player' ? 'You' : 'AI'} draw ${drawn.length} card${drawn.length === 1 ? '' : 's'} to refill.`);
-  }
 
   settleVictory(state, actorId, logs);
   if (state.phase === 'ended') {
@@ -900,7 +899,7 @@ export function reduceGameState(currentState: GameState, action: Action, rng: Ra
         errors.push('Turn already started.');
         break;
       }
-      applyStartOfTurn(state, state.turn.current, logs);
+      applyStartOfTurn(state, state.turn.current, logs, rng);
       settleVictory(state, state.turn.current, logs);
       state.turn.started = state.phase === 'playing';
       state.turn.actionTaken = false;
@@ -930,7 +929,7 @@ export function reduceGameState(currentState: GameState, action: Action, rng: Ra
         errors.push('Cannot end turn before taking action.');
         break;
       }
-      finishActorTurn(state, logs, rng);
+      finishActorTurn(state, logs);
       break;
     }
 
