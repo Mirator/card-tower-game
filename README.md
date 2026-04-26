@@ -12,6 +12,7 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 - Black vs Red duel screen with a compact top card-flow strip, visible discard piles, persistent hidden enemy hand, and a reveal-focused top stage for enemy card moments
 - Centered card-first bottom cockpit with a vertically centered 6-card hand tray, hover/drag card detail, drag-to-center play, and drag-down discard
 - Unified resource icon language (bricks/weapons/crystals) across player panel, enemy panel, and card corners with no text abbreviations
+- Battlefield castle and wall visuals that scale in height with their current values while keeping exact numeric labels visible
 - Portrait card UI with thick domain borders, paper-style interiors, explicit illustration motifs for the active 30-card deck, sandstone brick cards, crimson weapon cards, blue crystal cards, and softer gray-framed disabled cards that stay readable
 - Local persistence for stats/settings (`localStorage`)
 - Dev-gated automation hooks for scripted validation

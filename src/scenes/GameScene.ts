@@ -31,6 +31,9 @@ interface PlayerPanelRefs {
 interface TowerVisualRefs {
   container: Phaser.GameObjects.Container;
   windows: Phaser.GameObjects.Rectangle[];
+  body: Phaser.GameObjects.Rectangle;
+  roof: Phaser.GameObjects.Triangle;
+  shadow: Phaser.GameObjects.Ellipse;
   flash: Phaser.GameObjects.Rectangle;
   glow: Phaser.GameObjects.Ellipse;
   dangerGlow: Phaser.GameObjects.Ellipse;
@@ -38,6 +41,7 @@ interface TowerVisualRefs {
   wallValueText: Phaser.GameObjects.Text;
   towerValueText: Phaser.GameObjects.Text;
   progressFill: Phaser.GameObjects.Rectangle;
+  baseBodyHeight: number;
 }
 
 interface CardVisual {
@@ -1279,16 +1283,6 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(isRight ? 1 : 0, 0);
 
-    const castleBadge = this.add.circle(config.width / 2, towerTop + towerBlockHeight / 2, config.compact ? 14 : 24, 0x5a6f8a, 0.95).setStrokeStyle(2, 0xd6d9e0);
-    const castleText = this.add
-      .text(castleBadge.x, castleBadge.y, 'CAS', {
-        fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '7px' : '11px',
-        color: '#f2f5f8',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5);
-
     const valueOffset = config.compact ? 38 : 88;
     const towerValue = this.add
       .text(isRight ? valueOffset : config.width - valueOffset, towerTop + (config.compact ? 4 : 8), '30', {
@@ -1308,7 +1302,7 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    container.add([towerBlock, towerLabel, wallLabel, castleBadge, castleText, towerValue, wallValue]);
+    container.add([towerBlock, towerLabel, wallLabel, towerValue, wallValue]);
 
     if (config.side === 'left') {
       this.leftPanelContainer = container;
@@ -1437,21 +1431,23 @@ export class GameScene extends Phaser.Scene {
 
   private createTowerVisual(x: number, y: number, baseColor: number, label: string, scale = 1): TowerVisualRefs {
     const container = this.add.container(x, y).setScale(scale);
+    const baseBodyHeight = 242;
 
     const dangerGlow = this.add.ellipse(0, -124, 220, 296, 0xff6f5f, 0).setVisible(false);
     const shadow = this.add.ellipse(0, 14, 170, 42, 0x040a12, 0.36);
     const wallShield = this.add
-      .rectangle(0, -50, 184, 46, 0x94c7e3, 0.16)
+      .rectangle(0, 8, 184, 46, 0x94c7e3, 0.16)
+      .setOrigin(0.5, 1)
       .setStrokeStyle(3, 0xbde6ff, 0.72);
     const body = this.add
-      .rectangle(0, 0, 132, 242, baseColor, 0.95)
+      .rectangle(0, 0, 132, baseBodyHeight, baseColor, 0.95)
       .setStrokeStyle(3, 0xe0d5c2)
       .setOrigin(0.5, 1);
 
-    const roof = this.add.triangle(0, -242, 0, 0, 66, 34, -66, 34, 0x7b4b43, 0.95).setStrokeStyle(2, 0xd9c8b5);
+    const roof = this.add.triangle(0, -baseBodyHeight, 0, 0, 66, 34, -66, 34, 0x7b4b43, 0.95).setStrokeStyle(2, 0xd9c8b5);
 
     const glow = this.add.ellipse(0, -118, 170, 260, 0x7de0b4, 0.18).setVisible(false);
-    const flash = this.add.rectangle(0, -121, 128, 238, 0xee6a6a, 0).setOrigin(0.5, 0);
+    const flash = this.add.rectangle(0, -baseBodyHeight + 4, 128, baseBodyHeight - 8, 0xee6a6a, 0).setOrigin(0.5, 0);
 
     const progressBack = this.add
       .rectangle(92, -12, 12, 214, 0x152132, 0.88)
@@ -1460,13 +1456,14 @@ export class GameScene extends Phaser.Scene {
     const progressFill = this.add.rectangle(92, -12, 12, 120, THEME.gold, 0.92).setOrigin(0.5, 1);
 
     const towerValueText = this.add
-      .text(0, -286, 'Castle 30', {
+      .text(0, -baseBodyHeight - 44, 'Castle 30', {
         fontFamily: FONT_FAMILY,
         fontSize: '18px',
         color: '#fff2d4',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setVisible(false);
 
     const wallValueText = this.add
       .text(0, -58, 'Wall 10', {
@@ -1475,7 +1472,8 @@ export class GameScene extends Phaser.Scene {
         color: '#dff2ff',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setVisible(false);
 
     const labelText = this.add
       .text(0, 16, label, {
@@ -1484,12 +1482,21 @@ export class GameScene extends Phaser.Scene {
         color: '#f0ecdf',
         fontStyle: 'bold',
       })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0)
+      .setVisible(false);
 
     const windows: Phaser.GameObjects.Rectangle[] = [];
-    for (let row = 0; row < 4; row += 1) {
-      for (let col = 0; col < 3; col += 1) {
-        const windowRect = this.add.rectangle(-34 + col * 34, -30 - row * 44, 18, 24, 0x2a3550, 0.9).setStrokeStyle(1, 0xb2c3d8);
+    const windowRows = 4;
+    const windowCols = 3;
+    const windowTopPadding = 58;
+    const windowBottomPadding = 42;
+    const windowSpan = baseBodyHeight - windowTopPadding - windowBottomPadding;
+    const rowGap = windowRows > 1 ? windowSpan / (windowRows - 1) : 0;
+    for (let row = 0; row < windowRows; row += 1) {
+      for (let col = 0; col < windowCols; col += 1) {
+        const windowRect = this.add
+          .rectangle(-34 + col * 34, -(windowBottomPadding + row * rowGap), 18, 24, 0x2a3550, 0.9)
+          .setStrokeStyle(1, 0xb2c3d8);
         windows.push(windowRect);
       }
     }
@@ -1500,6 +1507,9 @@ export class GameScene extends Phaser.Scene {
     return {
       container,
       windows,
+      body,
+      roof,
+      shadow,
       flash,
       glow,
       dangerGlow,
@@ -1507,6 +1517,7 @@ export class GameScene extends Phaser.Scene {
       wallValueText,
       towerValueText,
       progressFill,
+      baseBodyHeight,
     };
   }
 
@@ -3198,15 +3209,50 @@ export class GameScene extends Phaser.Scene {
 
   private updateTowerPressure(tower: TowerVisualRefs, towerValue: number, wallValue: number, winTower: number): void {
     const towerRatio = Phaser.Math.Clamp(towerValue / winTower, 0, 1);
-    const wallRatio = Phaser.Math.Clamp(wallValue / 30, 0, 1);
+    const wallSafeValue = Math.max(0, wallValue);
+    const wallCurve = 1 - Math.exp(-wallSafeValue / 18);
+    const bodyMinHeight = tower.baseBodyHeight * 0.68;
+    const bodyMaxHeight = tower.baseBodyHeight * 1.14;
+    const bodyHeight = Phaser.Math.Linear(bodyMinHeight, bodyMaxHeight, Math.pow(towerRatio, 0.85));
     const danger = towerValue <= Math.ceil(winTower * 0.35);
+    const windowRows = 4;
+    const windowCols = 3;
+    const windowTopPadding = Phaser.Math.Clamp(bodyHeight * 0.24, 44, 76);
+    const windowBottomPadding = Phaser.Math.Clamp(bodyHeight * 0.16, 30, 56);
+    const windowSpan = Math.max(52, bodyHeight - windowTopPadding - windowBottomPadding);
+    const windowRowGap = windowRows > 1 ? windowSpan / (windowRows - 1) : 0;
+    let windowIndex = 0;
+    for (let row = 0; row < windowRows; row += 1) {
+      for (let col = 0; col < windowCols; col += 1) {
+        tower.windows[windowIndex]?.setPosition(-34 + col * 34, -(windowBottomPadding + row * windowRowGap));
+        windowIndex += 1;
+      }
+    }
+
+    const wallHeight = wallSafeValue > 0 ? 12 + wallCurve * 120 : 10;
+    const wallWidth = wallSafeValue > 0 ? 152 + wallCurve * 58 : 148;
+    const wallTop = 8 - wallHeight;
+
+    tower.body.displayHeight = bodyHeight;
+    tower.roof.y = -bodyHeight;
+    tower.shadow.setSize(158 + towerRatio * 20, 40 + towerRatio * 4);
+    tower.flash.y = -bodyHeight + 4;
+    tower.flash.displayHeight = Math.max(42, bodyHeight - 8);
+    tower.glow.y = -bodyHeight * 0.5;
+    tower.glow.setSize(170, Math.max(196, bodyHeight + 20));
+    tower.dangerGlow.y = -bodyHeight * 0.52;
+    tower.dangerGlow.setSize(220, Math.max(238, bodyHeight + 74));
+    tower.towerValueText.setY(-bodyHeight - 44);
+    tower.wallShield.displayHeight = wallHeight;
+    tower.wallShield.displayWidth = wallWidth;
+    tower.wallShield.setAlpha(wallSafeValue > 0 ? 0.18 + wallCurve * 0.34 : 0.05);
+    tower.wallShield.setStrokeStyle(3, 0xbde6ff, wallSafeValue > 0 ? 0.56 + wallCurve * 0.26 : 0.2);
+    tower.wallValueText.setY(wallSafeValue > 0 ? Math.max(-bodyHeight + 20, wallTop - 14) : -48);
 
     tower.towerValueText.setText(`Castle ${towerValue}/${winTower}`);
     tower.wallValueText.setText(wallValue > 0 ? `Wall ${wallValue}` : 'Wall down');
     tower.progressFill.displayHeight = Math.max(8, 214 * towerRatio);
     tower.progressFill.setFillStyle(towerRatio >= 0.78 ? 0x94f0a6 : danger ? 0xff8a70 : THEME.gold, 0.92);
-    tower.wallShield.setAlpha(wallValue > 0 ? 0.18 + wallRatio * 0.36 : 0.04);
-    tower.wallShield.setScale(1 + wallRatio * 0.18, 1 + wallRatio * 0.08);
     tower.wallValueText.setColor(wallValue > 0 ? '#dff2ff' : '#ffb7a8');
     tower.dangerGlow.setVisible(danger);
     tower.dangerGlow.setAlpha(danger ? 0.18 : 0);

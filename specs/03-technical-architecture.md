@@ -9,7 +9,7 @@
 ### GameScene structure
 - Slim top card-flow bar: player draw pile, player discard pile, active turn headline, goal + enemy tower/wall summary, enemy discard pile, hidden enemy hand, turn chips, and a reveal-stage dock used during staged enemy card moments
 - Side panels: Player A and Player B resources, generators, tower, and wall
-- Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and an otherwise open middle playfield
+- Center battlefield: value-scaled tower visuals, value-scaled wall shields, progress meters, attack lane, impact feedback, and an otherwise open middle playfield
 - Bottom cockpit: centered player hand tray, transient hover-preview overlay, drag guide overlay, and a narrow/mobile stacked variant
 - Overlay layer: floating damage/resource text, played-card travel, and match-end overlay
 - Resource icons are rendered through one shared glyph renderer so side panels and card corners stay visually consistent
