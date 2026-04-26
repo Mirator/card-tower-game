@@ -108,16 +108,16 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
-`render_game_to_text()` includes a `ui` block for the visible card-flow strip: draw deck count, player/enemy discard piles, hidden enemy hand count, and pending/revealed enemy card state.
+`render_game_to_text()` includes a `ui` block for the visible card-flow strip and refined HUD presentation: draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card state, `bottomHudLayout`, `topStageMode`, and `topStageCardId`.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.
 
 ## Game screen
 The implemented UI uses:
-- Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, and turn chips
+- Slim top card-flow bar with `Black` draw pile, `Black` discard pile, current turn, goal + enemy castle/wall summary, `Red` discard pile, hidden `Red` hand, turn chips, and a reveal-focused top stage that appears during enemy card moments
 - Left `Black` panel and right `Red` panel with generators, resources, castle, and wall
 - Center battlefield with castle progress meters, wall shields, danger glow, played-card travel, enemy reveal, and impact feedback
-- Bottom cockpit with 6 visible portrait hand cards, selected-card preview, explicit Play/Discard buttons, and a minimal controls hint
+- Bottom cockpit with a centered 6-card portrait hand lane, a compact selected-card rail, a compact Play/Discard rail, and a minimal controls hint on narrow layouts
 - No turn timer in v1
 
 Card flow behavior:
@@ -125,6 +125,7 @@ Card flow behavior:
 - The player draw pile shows the remaining visible deck count
 - The enemy hand is shown as hidden card backs throughout the match
 - On AI turns, one hidden enemy card is highlighted before it is revealed or discarded
+- Revealed enemy cards appear on a larger top-center stage instead of living as a permanent idle preview card
 - When a discard pile reshuffles back into draw, the top-strip pile visuals update to match
 
 Card/resource color language:
@@ -139,14 +140,15 @@ Hand-card visual language:
 - Light paper-style inner panel instead of a flat tile fill
 - Small resource icon in the upper-left corner
 - Oversized cost number in the upper-right corner
-- Centered title and simple icon illustration
+- Centered title and simple-but-specific icon illustration chosen from explicit visual keys on the active deck cards
 - Short bottom effect text with a clear selected-card gold highlight
 - Disabled cards use a darker neutral paper face with a gray border instead of a bright tinted one
+- Disabled cards stay readable for inspection, but they do not lift or glow like playable cards
 - The hand row sits slightly higher in the bottom band so the cards feel centered in the cockpit area
 
 Bottom HUD behavior:
 - No visible scrolling or persistent event log
-- Turn guidance stays in the top strip, while short card details stay in the selected-card panel
+- Turn guidance stays in the top strip, while short card details stay in the selected-card rail
 - Combat/resource changes are communicated through animation, floating text, and discard/reveal motion instead of a text feed
 
 Controls:

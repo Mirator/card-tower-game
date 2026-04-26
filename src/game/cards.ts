@@ -11,6 +11,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['defense'],
     text: '+6 Wall',
     effects: [{ type: 'adjustWall', target: 'self', amount: 6 }],
+    illustrationKey: 'wall',
   }),
   c({
     id: 'reinforce',
@@ -23,6 +24,7 @@ export const ALL_CARDS: CardDefinition[] = [
       { type: 'adjustWall', target: 'self', amount: 4 },
       { type: 'adjustTower', target: 'self', amount: 2 },
     ],
+    illustrationKey: 'masonry',
   }),
   c({
     id: 'quarry_team',
@@ -32,6 +34,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+1 Quarry',
     effects: [{ type: 'adjustGenerator', target: 'self', generator: 'quarry', amount: 1 }],
+    illustrationKey: 'quarry',
   }),
   c({
     id: 'bastion',
@@ -59,6 +62,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['defense'],
     text: '+10 Wall',
     effects: [{ type: 'adjustWall', target: 'self', amount: 10 }],
+    illustrationKey: 'wall',
   }),
   c({
     id: 'fortify',
@@ -101,6 +105,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['defense'],
     text: '+5 Tower',
     effects: [{ type: 'adjustTower', target: 'self', amount: 5 }],
+    illustrationKey: 'tower',
   }),
   c({
     id: 'double_wall',
@@ -119,6 +124,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy', 'defense'],
     text: '+10 Tower',
     effects: [{ type: 'adjustTower', target: 'self', amount: 10 }],
+    illustrationKey: 'tower',
   }),
   c({
     id: 'brick_flow',
@@ -128,6 +134,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+8 Bricks',
     effects: [{ type: 'adjustResource', target: 'self', resource: 'bricks', amount: 8 }],
+    illustrationKey: 'crate',
   }),
   c({
     id: 'construction',
@@ -137,6 +144,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+2 Tower per Quarry',
     effects: [{ type: 'towerPerGenerator', generator: 'quarry', amountPer: 2 }],
+    illustrationKey: 'tower',
   }),
   c({
     id: 'barrier',
@@ -207,6 +215,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '4 dmg',
     effects: [{ type: 'attack', amount: 4, source: 'attack' }],
+    illustrationKey: 'sword',
   }),
   c({
     id: 'slash',
@@ -216,6 +225,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '5 dmg',
     effects: [{ type: 'attack', amount: 5, source: 'attack' }],
+    illustrationKey: 'crossed_swords',
   }),
   c({
     id: 'raid',
@@ -225,6 +235,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '7 dmg',
     effects: [{ type: 'attack', amount: 7, source: 'attack' }],
+    illustrationKey: 'crossed_swords',
   }),
   c({
     id: 'catapult',
@@ -243,6 +254,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack', 'sabotage'],
     text: '8 Wall dmg',
     effects: [{ type: 'attack', amount: 8, wallOnly: true, source: 'attack' }],
+    illustrationKey: 'ram',
   }),
   c({
     id: 'smash',
@@ -252,6 +264,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '6 dmg',
     effects: [{ type: 'attack', amount: 6, source: 'attack' }],
+    illustrationKey: 'sword',
   }),
   c({
     id: 'heavy_blow',
@@ -291,6 +304,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+1 Barracks',
     effects: [{ type: 'adjustGenerator', target: 'self', generator: 'barracks', amount: 1 }],
+    illustrationKey: 'drum',
   }),
   c({
     id: 'double_strike',
@@ -330,6 +344,7 @@ export const ALL_CARDS: CardDefinition[] = [
       { type: 'adjustWall', target: 'opponent', amount: -4 },
       { type: 'adjustTower', target: 'opponent', amount: -2 },
     ],
+    illustrationKey: 'cracked_shield',
   }),
   c({
     id: 'war_cry',
@@ -348,6 +363,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack', 'finisher'],
     text: '14 dmg',
     effects: [{ type: 'attack', amount: 14, source: 'attack' }],
+    illustrationKey: 'crossed_swords',
   }),
   c({
     id: 'harass',
@@ -400,6 +416,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '3 Tower dmg',
     effects: [{ type: 'attack', amount: 3, bypassWall: true, source: 'spell' }],
+    illustrationKey: 'crystal',
   }),
   c({
     id: 'zap',
@@ -409,6 +426,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '4 dmg bypass Wall',
     effects: [{ type: 'attack', amount: 4, bypassWall: true, source: 'spell' }],
+    illustrationKey: 'crystal',
   }),
   c({
     id: 'arcane_study',
@@ -418,6 +436,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+1 Magic',
     effects: [{ type: 'adjustGenerator', target: 'self', generator: 'magic', amount: 1 }],
+    illustrationKey: 'book',
   }),
   c({
     id: 'transmute',
@@ -463,6 +482,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+8 Crystals',
     effects: [{ type: 'adjustResource', target: 'self', resource: 'crystals', amount: 8 }],
+    illustrationKey: 'orb',
   }),
   c({
     id: 'chaos',
@@ -511,6 +531,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['economy'],
     text: '+2 Magic',
     effects: [{ type: 'adjustGenerator', target: 'self', generator: 'magic', amount: 2 }],
+    illustrationKey: 'orb',
   }),
   c({
     id: 'hex',
@@ -538,6 +559,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['defense', 'control'],
     text: 'Prevent next attack',
     effects: [{ type: 'setShield' }],
+    illustrationKey: 'shield',
   }),
   c({
     id: 'flux',
@@ -556,6 +578,7 @@ export const ALL_CARDS: CardDefinition[] = [
     tags: ['attack'],
     text: '9 dmg bypass Wall',
     effects: [{ type: 'attack', amount: 9, bypassWall: true, source: 'spell' }],
+    illustrationKey: 'blast',
   }),
   c({
     id: 'control',

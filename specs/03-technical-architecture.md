@@ -7,15 +7,16 @@
 - GameScene: main gameplay, layout, input, animation, AI turn pacing, rematch flow, and automation bridge
 
 ### GameScene structure
-- Slim top card-flow bar: player draw pile, player discard pile, active turn headline, goal + enemy tower/wall summary, enemy discard pile, hidden enemy hand, and turn chips
+- Slim top card-flow bar: player draw pile, player discard pile, active turn headline, goal + enemy tower/wall summary, enemy discard pile, hidden enemy hand, turn chips, and a reveal-stage dock used during staged enemy card moments
 - Side panels: Player A and Player B resources, generators, tower, and wall
-- Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and enemy card reveal
-- Bottom cockpit: player hand, selected-card preview, Play/Discard command panel, compact battle feed, and control hint
+- Center battlefield: tower visuals, wall shields, progress meters, attack lane, impact feedback, and an otherwise open middle playfield
+- Bottom cockpit: compact selected-card rail, centered player hand lane, compact Play/Discard action rail, and a narrow-only control hint
 - Overlay layer: floating damage/resource text, played-card travel, and match-end overlay
 
 ### Implemented systems
 - Reducer-driven engine in `src/game/engine.ts` handles turn flow, resource gain, card play/discard, refill, effect resolution, statuses, and victory.
 - Card definitions in `src/game/cards.ts` remain the authoritative lookup table; `STARTER_DECK_CARD_IDS` is the active 30-card physical deck composition.
+- Card definitions may include a visual-only `illustrationKey` so the scene can render simple, explicit card art without changing gameplay behavior.
 - Duplicate card copies are represented by repeated ids in each player's draw pile, discard pile, and hand.
 - Player play/discard actions may include `handIndex` so duplicate copies in hand can be targeted safely.
 - AI controller in `src/game/ai.ts` prioritizes lethal, prevent-lethal, early economy, and heuristic best moves.
@@ -64,6 +65,6 @@ When exposed for validation, the app provides:
 - `window.advanceTime(ms: number): void`
 - `window.__game.interact(): void`, which plays the first affordable player card for smoke tests
 
-`render_game_to_text()` includes a `ui` block describing top-strip card flow state such as visible draw deck count, player/enemy discard piles, hidden enemy hand count, and pending/revealed enemy card ids for automation checks.
+`render_game_to_text()` includes a `ui` block describing top-strip card flow state such as visible draw deck count, player/enemy discard piles, hidden enemy hand count, pending/revealed enemy card ids, and presentation fields such as `bottomHudLayout`, `topStageMode`, and `topStageCardId` for automation checks.
 
 These hooks must stay unavailable in production unless `VITE_EXPOSE_TEST_HOOKS=true`.

@@ -109,3 +109,11 @@ Original prompt: Implement the game based on card_tower_game.md using the full C
 - Raised the hand row so the portrait cards sit higher and feel more centered in the bottom cockpit.
 - Removed the visible battle/event feed from the lower HUD; floating feedback and the top turn strip now carry the moment-to-moment state changes.
 - Restyled disabled cards with darker neutral paper faces, gray borders, dimmer icons, and slightly reduced opacity so they read as unavailable without blending into the tray.
+
+## Card-First Refinement
+- Rebuilt the bottom cockpit around a centered hand lane with compact side rails so the cards remain the dominant element on desktop and collapse into a tighter stacked layout on narrow screens.
+- Added a reveal-focused top stage that stays hidden during idle play and expands enemy card moments into a clearer top-center presentation.
+- Strengthened the physical-card treatment with a deeper frame seam, stronger shadowing, and explicit illustration keys for the active 30-card deck so more cards use specific icon motifs instead of generic fallbacks.
+- Updated automation state output so `render_game_to_text().ui` now exposes `bottomHudLayout`, `topStageMode`, and `topStageCardId` alongside the existing deck/discard and enemy-hand fields.
+- Synced `specs/09-ui.md`, `specs/03-technical-architecture.md`, `card_tower_game.md`, and `README.md` to the refined card-first layout and reveal-stage language.
+- Validation: `npm run lint`, `npm test`, `npm run build`, plus desktop and narrow Playwright smoke captures under `output/card-first-final-desktop/` and `output/card-first-final-mobile/`.

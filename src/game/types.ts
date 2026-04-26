@@ -6,6 +6,24 @@ export type Generator = 'quarry' | 'barracks' | 'magic';
 
 export type CardDomain = Resource;
 
+export type CardIllustrationKey =
+  | 'wall'
+  | 'masonry'
+  | 'tower'
+  | 'quarry'
+  | 'sword'
+  | 'crossed_swords'
+  | 'bow'
+  | 'ram'
+  | 'cracked_shield'
+  | 'drum'
+  | 'book'
+  | 'crystal'
+  | 'shield'
+  | 'crate'
+  | 'orb'
+  | 'blast';
+
 export type CardTag =
   | 'attack'
   | 'defense'
@@ -63,6 +81,7 @@ export interface CardDefinition {
   tags: CardTag[];
   text: string;
   effects: EffectSpec[];
+  illustrationKey?: CardIllustrationKey;
 }
 
 export interface StatusState {
