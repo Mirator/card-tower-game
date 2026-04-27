@@ -34,6 +34,8 @@ interface TowerVisualRefs {
   roof: Phaser.GameObjects.Triangle;
   wallLine: Phaser.GameObjects.Rectangle;
   baseBodyHeight: number;
+  bodyTargetHeight: number;
+  wallTargetHeight: number;
 }
 
 interface CardVisual {
@@ -1393,16 +1395,16 @@ export class GameScene extends Phaser.Scene {
     const generatorValue = this.add
       .text(generatorValueX, config.top + (config.compact ? 2 : 5), '2', {
         fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '18px' : '28px',
+        fontSize: config.compact ? '15px' : '23px',
         color: '#f9f5eb',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
 
     const resourceValue = this.add
-      .text(generatorValueX, config.top + (config.compact ? 25 : 39), '5', {
+      .text(generatorValueX, config.top + (config.compact ? 21 : 34), '5', {
         fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '14px' : '21px',
+        fontSize: config.compact ? '18px' : '28px',
         color: '#f7f2e6',
         fontStyle: 'bold',
       })
@@ -1481,6 +1483,8 @@ export class GameScene extends Phaser.Scene {
       roof,
       wallLine,
       baseBodyHeight,
+      bodyTargetHeight: baseBodyHeight,
+      wallTargetHeight: 24,
     };
   }
 
@@ -1701,16 +1705,16 @@ export class GameScene extends Phaser.Scene {
 
       const towerDelta = after.tower - before.tower;
       if (towerDelta < 0) {
-        this.spawnFloatingText(this.getTowerAnchor(playerId), `${towerDelta}`, '#ff8f8f');
+        this.spawnFloatingText(this.getTowerAnchor(playerId), `Castle ${towerDelta}`, '#ff8f8f');
         this.animateTowerDamage(playerId);
       } else if (towerDelta > 0) {
-        this.spawnFloatingText(this.getTowerAnchor(playerId), `+${towerDelta}`, '#8ff0b5');
+        this.spawnFloatingText(this.getTowerAnchor(playerId), `Castle +${towerDelta}`, '#8ff0b5');
         this.animateTowerHeal(playerId);
       }
 
       const wallDelta = after.wall - before.wall;
       if (wallDelta !== 0) {
-        this.spawnFloatingText(this.getPanelAnchor(playerId, 0), `${wallDelta > 0 ? '+' : ''}${wallDelta} Wall`, wallDelta > 0 ? '#afe3ff' : '#ffb6b6');
+        this.spawnFloatingText(this.getWallAnchor(playerId), `Wall ${wallDelta > 0 ? '+' : ''}${wallDelta}`, wallDelta > 0 ? '#afe3ff' : '#ffb6b6');
       }
 
       const resources: Resource[] = ['bricks', 'weapons', 'crystals'];
@@ -1790,7 +1794,15 @@ export class GameScene extends Phaser.Scene {
   private getTowerAnchor(playerId: PlayerId): Point {
     const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
     const world = new Phaser.Math.Vector2();
-    tower.container.getWorldTransformMatrix().transformPoint(0, -150, world);
+    tower.container.getWorldTransformMatrix().transformPoint(0, -tower.bodyTargetHeight - 24, world);
+    return { x: world.x, y: world.y };
+  }
+
+  private getWallAnchor(playerId: PlayerId): Point {
+    const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
+    const wallHeight = Math.max(tower.wallTargetHeight, 18);
+    const world = new Phaser.Math.Vector2();
+    tower.container.getWorldTransformMatrix().transformPoint(tower.wallLine.x, -wallHeight - 12, world);
     return { x: world.x, y: world.y };
   }
 
@@ -2108,6 +2120,7 @@ export class GameScene extends Phaser.Scene {
         fontFamily: FONT_FAMILY,
         fontSize: '13px',
         color: '#24201c',
+        fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: width - 28 },
       })
@@ -2269,6 +2282,7 @@ export class GameScene extends Phaser.Scene {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '14px' : '16px',
         color: '#24201c',
+        fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: width - 40 },
       })
@@ -2352,9 +2366,7 @@ export class GameScene extends Phaser.Scene {
   private animateTowerDamage(playerId: PlayerId): void {
     const tower = playerId === 'player' ? this.playerTowerVisual : this.aiTowerVisual;
     this.tweens.killTweensOf(tower.container);
-    this.tweens.killTweensOf(tower.body);
     const baseX = tower.container.x;
-    tower.body.setAlpha(0.78);
 
     this.tweens.add({
       targets: tower.container,
@@ -2365,12 +2377,6 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.InOut',
       onComplete: () => {
         tower.container.x = baseX;
-        this.tweens.add({
-          targets: tower.body,
-          alpha: 0.95,
-          duration: animDuration(180),
-          ease: 'Sine.Out',
-        });
       },
     });
   }
@@ -2380,7 +2386,6 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(tower.container);
     const baseScaleX = tower.container.scaleX;
     const baseScaleY = tower.container.scaleY;
-    tower.body.setAlpha(0.92);
 
     this.tweens.add({
       targets: tower.container,
@@ -2391,7 +2396,6 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.Out',
       onComplete: () => {
         tower.container.setScale(baseScaleX, baseScaleY);
-        tower.body.setAlpha(0.95);
       },
     });
   }
@@ -2405,17 +2409,19 @@ export class GameScene extends Phaser.Scene {
     const floating = this.add
       .text(anchor.x, anchor.y, text, {
         fontFamily: FONT_FAMILY,
-        fontSize: '19px',
+        fontSize: this.isNarrowLayout() ? '15px' : '19px',
         color,
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
+    floating.setStroke('#1a1110', this.isNarrowLayout() ? 3 : 4);
+    floating.setShadow(0, 2, '#000000', 4, true, true);
 
     this.overlayContainer.add(floating);
 
     this.tweens.add({
       targets: floating,
-      y: anchor.y - 48,
+      y: anchor.y - (this.isNarrowLayout() ? 34 : 48),
       alpha: 0,
       duration: animDuration(640 * (options.durationMultiplier ?? 1)),
       ease: 'Sine.Out',
@@ -3163,20 +3169,68 @@ export class GameScene extends Phaser.Scene {
     const castleRatio = Phaser.Math.Clamp(towerValue / winTower, 0, 1);
     const castleHeight = Phaser.Math.Linear(CASTLE_MIN_HEIGHT, CASTLE_MAX_HEIGHT, castleRatio);
     const wallSafeValue = Math.max(0, wallValue);
+    const wallRatio = Phaser.Math.Clamp(wallSafeValue / WALL_VISUAL_CAP, 0, 1);
+    const wallHeight = wallSafeValue <= 0 ? 0 : Math.max(6, WALL_MAX_HEIGHT * wallRatio);
+    const shouldAnimate = this.animationsEnabled && Math.abs(tower.bodyTargetHeight - castleHeight) > 0.5;
 
-    tower.body.displayHeight = castleHeight;
-    tower.roof.y = -castleHeight;
+    if (shouldAnimate) {
+      this.tweens.killTweensOf([tower.body, tower.roof]);
+      this.tweens.add({
+        targets: tower.body,
+        displayHeight: castleHeight,
+        duration: animDuration(260),
+        ease: 'Back.Out',
+      });
+      this.tweens.add({
+        targets: tower.roof,
+        y: -castleHeight,
+        duration: animDuration(260),
+        ease: 'Back.Out',
+      });
+    } else {
+      tower.body.displayHeight = castleHeight;
+      tower.roof.y = -castleHeight;
+    }
+
+    tower.bodyTargetHeight = castleHeight;
 
     if (wallSafeValue <= 0) {
-      tower.wallLine.setVisible(false);
+      if (tower.wallLine.visible && this.animationsEnabled) {
+        this.tweens.killTweensOf(tower.wallLine);
+        this.tweens.add({
+          targets: tower.wallLine,
+          displayHeight: 0,
+          alpha: 0,
+          duration: animDuration(180),
+          ease: 'Sine.In',
+          onComplete: () => tower.wallLine.setVisible(false),
+        });
+      } else {
+        tower.wallLine.setVisible(false);
+        tower.wallLine.displayHeight = 0;
+        tower.wallLine.setAlpha(0);
+      }
+      tower.wallTargetHeight = 0;
       return;
     }
 
-    const wallRatio = Phaser.Math.Clamp(wallSafeValue / WALL_VISUAL_CAP, 0, 1);
-    const wallHeight = Math.max(6, WALL_MAX_HEIGHT * wallRatio);
     tower.wallLine.setVisible(true);
+    tower.wallLine.setAlpha(0.95);
     tower.wallLine.displayWidth = WALL_LINE_WIDTH;
-    tower.wallLine.displayHeight = wallHeight;
+
+    if (this.animationsEnabled && Math.abs(tower.wallTargetHeight - wallHeight) > 0.5) {
+      this.tweens.killTweensOf(tower.wallLine);
+      this.tweens.add({
+        targets: tower.wallLine,
+        displayHeight: wallHeight,
+        alpha: 0.95,
+        duration: animDuration(220),
+        ease: 'Back.Out',
+      });
+    } else {
+      tower.wallLine.displayHeight = wallHeight;
+    }
+    tower.wallTargetHeight = wallHeight;
   }
 
   private rebuildHand(animateEntry = false): void {
@@ -3278,6 +3332,7 @@ export class GameScene extends Phaser.Scene {
           fontFamily: FONT_FAMILY,
           fontSize: ultraCompact ? '8px' : compact ? '10px' : '13px',
           color: muted ? '#5c5650' : '#24201c',
+          fontStyle: compact ? 'normal' : 'bold',
           align: 'center',
           wordWrap: { width: Math.max(30, cardWidth - cardPadding * 2) },
         })

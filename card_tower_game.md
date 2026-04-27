@@ -142,7 +142,7 @@ Hand-card visual language:
 - Small resource icon in the upper-left corner
 - Oversized cost number in the upper-right corner
 - Centered title and simple-but-specific icon illustration chosen from explicit visual keys on the active deck cards
-- Short bottom effect text with a clear selected-card gold highlight
+- Short bold bottom effect text using consistent target-first wording, with a clear selected-card gold highlight
 - Disabled cards use a softer neutral paper face with a gray border instead of a bright tinted one
 - Disabled cards stay readable for inspection, but they do not lift or glow like playable cards
 - The hand row sits slightly higher in the bottom band so the cards feel centered in the cockpit area
@@ -150,7 +150,7 @@ Hand-card visual language:
 Bottom HUD behavior:
 - No visible scrolling or persistent event log
 - Turn guidance stays in the top strip, while short card details appear only while hovering or dragging a card
-- Combat/resource changes are communicated through animation, floating text, and discard/reveal motion instead of a text feed
+- Combat/resource changes are communicated through smooth castle/wall size animation, high-contrast floating text near the affected object, and discard/reveal motion instead of a text feed
 
 Controls:
 - Left click a playable card: play it immediately
