@@ -2930,6 +2930,16 @@ export class GameScene extends Phaser.Scene {
 
   private formatCardEffectLine(card: CardDefinition): string {
     const formatAmount = (amount: number): string => `${amount > 0 ? '+' : ''}${amount}`;
+    const formatAttackLine = (effect: Extract<EffectSpec, { type: 'attack' }>): string => {
+      const amount = effect.amount * (effect.hits ?? 1);
+      if (effect.bypassWall) {
+        return `Enemy Castle -${amount}`;
+      }
+      if (effect.wallOnly) {
+        return `Enemy Wall -${amount}`;
+      }
+      return `Enemy Wall/Castle -${amount}`;
+    };
     const parts = card.effects.map((effect) => {
       switch (effect.type) {
         case 'adjustWall':
@@ -2940,16 +2950,8 @@ export class GameScene extends Phaser.Scene {
           return `${effect.target === 'opponent' ? 'Enemy ' : ''}${RESOURCE_META[effect.resource].resourceName} ${formatAmount(effect.amount)}`;
         case 'adjustGenerator':
           return `${effect.target === 'opponent' ? 'Enemy ' : ''}${this.generatorUiName(effect.generator)} ${formatAmount(effect.amount)}`;
-        case 'attack': {
-          const amount = effect.amount * (effect.hits ?? 1);
-          if (effect.bypassWall) {
-            return `Castle dmg ${amount}`;
-          }
-          if (effect.wallOnly) {
-            return `Wall dmg ${amount}`;
-          }
-          return `Attack +${amount}`;
-        }
+        case 'attack':
+          return formatAttackLine(effect);
         case 'towerPerGenerator':
           return `Castle +${effect.amountPer} / Builder`;
         case 'setShield':
@@ -3388,12 +3390,12 @@ export class GameScene extends Phaser.Scene {
       case 'attack': {
         const total = effect.amount * (effect.hits ?? 1);
         if (effect.bypassWall) {
-          return `Enemy tower -${total} bypass`;
+          return `Enemy Castle -${total}`;
         }
         if (effect.wallOnly) {
-          return `Enemy wall -${total}`;
+          return `Enemy Wall -${total}`;
         }
-        return `Enemy wall/tower -${total}`;
+        return `Enemy Wall/Castle -${total}`;
       }
       case 'setNextAttackBonus':
         return `Next attack +${effect.amount}`;
