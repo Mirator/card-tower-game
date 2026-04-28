@@ -2944,7 +2944,7 @@ export class GameScene extends Phaser.Scene {
       if (effect.wallOnly) {
         return `Enemy Wall -${amount}`;
       }
-      return `Enemy Wall/Castle -${amount}`;
+      return `Enemy -${amount}`;
     };
     const parts = card.effects.map((effect) => {
       switch (effect.type) {
@@ -3450,7 +3450,7 @@ export class GameScene extends Phaser.Scene {
         if (effect.wallOnly) {
           return `Enemy Wall -${total}`;
         }
-        return `Enemy Wall/Castle -${total}`;
+        return `Enemy -${total}`;
       }
       case 'setNextAttackBonus':
         return `Next attack +${effect.amount}`;
