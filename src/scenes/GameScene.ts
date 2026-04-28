@@ -13,6 +13,7 @@ import {
   DRAG_START_THRESHOLD,
   ENEMY_CARD_REVEAL_MS,
   ENEMY_CARD_SELECTION_MS,
+  HOWTO_HINT_TURNS,
   NARROW_LAYOUT_WIDTH,
   RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER,
   SWIPE_THRESHOLD,
@@ -129,6 +130,7 @@ export class GameScene extends Phaser.Scene {
   private aiSelectedHandIndex: number | null = null;
   private enemyCardRevealContainer: Phaser.GameObjects.Container | null = null;
   private resultPersisted = false;
+  private playerActionsTaken = 0;
 
   private animationsEnabled = true;
 
@@ -287,19 +289,21 @@ export class GameScene extends Phaser.Scene {
 
     const narrow = this.isNarrowLayout(width);
     const panelWidth = narrow ? Math.max(314, width - 18) : Math.max(760, Math.min(1040, width * 0.78));
-    const panelHeight = narrow ? 84 : 102;
+    const panelHeight = narrow ? 112 : 102;
     const centerX = width / 2;
     const topY = Math.max(8, Math.round(height * 0.018));
     const panelCenterY = topY + panelHeight / 2;
-    const pileWidth = narrow ? 58 : 76;
-    const pileHeight = narrow ? 68 : 86;
-    const deckX = centerX - panelWidth / 2 + (narrow ? 38 : 54);
-    const playerDiscardX = deckX + pileWidth + (narrow ? 16 : 20);
-    const enemyHandWidth = narrow ? 138 : 198;
-    const enemyHandHeight = narrow ? 54 : 66;
-    const enemyHandX = centerX + panelWidth / 2 - enemyHandWidth / 2 - (narrow ? 16 : 22);
-    const aiDiscardX = enemyHandX - enemyHandWidth / 2 - pileWidth / 2 - (narrow ? 16 : 20);
-    const summaryWidth = Math.max(190, aiDiscardX - playerDiscardX - pileWidth);
+    const pileWidth = narrow ? 50 : 76;
+    const pileHeight = narrow ? 54 : 86;
+    const enemyHandWidth = narrow ? 110 : 198;
+    const enemyHandHeight = narrow ? 44 : 66;
+    // On narrow: piles sit on a second row below the header so they don't crash into the title text.
+    const pileRowY = narrow ? panelCenterY + 22 : panelCenterY + 2;
+    const deckX = centerX - panelWidth / 2 + (narrow ? 32 : 54);
+    const playerDiscardX = deckX + pileWidth + (narrow ? 8 : 20);
+    const enemyHandX = centerX + panelWidth / 2 - enemyHandWidth / 2 - (narrow ? 12 : 22);
+    const aiDiscardX = enemyHandX - enemyHandWidth / 2 - pileWidth / 2 - (narrow ? 8 : 20);
+    const summaryWidth = narrow ? panelWidth - 32 : Math.max(190, aiDiscardX - playerDiscardX - pileWidth);
 
     this.topInfoGlow = this.add
       .rectangle(centerX, panelCenterY, panelWidth + 8, panelHeight + 8, 0x000000, 0)
@@ -310,15 +314,19 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(2, THEME.gold, 0.82);
     this.topCenterContainer.add([this.topInfoGlow, panel]);
 
-    this.playerDeckPile = this.createTopPile(deckX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
-    this.playerDiscardPile = this.createTopPile(playerDiscardX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
-    this.aiDiscardPile = this.createTopPile(aiDiscardX, panelCenterY + (narrow ? 1 : 2), pileWidth, pileHeight);
-    this.enemyHand = this.createEnemyHandRail(enemyHandX, panelCenterY + (narrow ? 1 : 2), enemyHandWidth, enemyHandHeight);
+    this.playerDeckPile = this.createTopPile(deckX, pileRowY, pileWidth, pileHeight);
+    this.playerDiscardPile = this.createTopPile(playerDiscardX, pileRowY, pileWidth, pileHeight);
+    this.aiDiscardPile = this.createTopPile(aiDiscardX, pileRowY, pileWidth, pileHeight);
+    this.enemyHand = this.createEnemyHandRail(enemyHandX, pileRowY, enemyHandWidth, enemyHandHeight);
+
+    const headerY = narrow ? panelCenterY - 36 : panelCenterY - 12;
+    const summaryY = narrow ? panelCenterY - 16 : panelCenterY - 12;
+    const turnLabelY = narrow ? panelCenterY - 36 : panelCenterY - 33;
 
     this.topSummaryText = this.add
-      .text(centerX, panelCenterY - (narrow ? 8 : 12), 'Goal 100 | Red C30 / W10', {
+      .text(centerX, summaryY, 'Goal 100 • Enemy Castle 30  Wall 10', {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '9px' : '15px',
+        fontSize: narrow ? '11px' : '15px',
         color: '#dce8f7',
         fontStyle: 'bold',
         align: 'center',
@@ -326,12 +334,12 @@ export class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    const indicatorY = panelCenterY + (narrow ? 26 : 28);
+    const indicatorY = narrow ? panelCenterY - 6 : panelCenterY + 28;
     const indicatorRadius = narrow ? 6 : 8;
     const indicatorStartX = centerX - (narrow ? 12 : 14);
     this.turnIndicatorPlayer = this.add.circle(indicatorStartX, indicatorY, indicatorRadius, THEME.playerBlack, 0.4).setStrokeStyle(2, 0xd8e5ff);
     const turnIndicatorPlayerText = this.add
-      .text(this.turnIndicatorPlayer.x, indicatorY, 'B', {
+      .text(this.turnIndicatorPlayer.x, indicatorY, 'Y', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '7px' : '9px',
         color: '#f3f4ef',
@@ -340,7 +348,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.turnIndicatorAi = this.add.circle(indicatorStartX + (narrow ? 18 : 24), indicatorY, indicatorRadius, THEME.enemyRed, 0.4).setStrokeStyle(2, 0xf2d8d6);
     const turnIndicatorAiText = this.add
-      .text(this.turnIndicatorAi.x, indicatorY, 'R', {
+      .text(this.turnIndicatorAi.x, indicatorY, 'E', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '7px' : '9px',
         color: '#f3f4ef',
@@ -349,23 +357,34 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.turnLabelText = this.add
-      .text(centerX, panelCenterY - (narrow ? 28 : 33), 'Your turn', {
+      .text(centerX, turnLabelY, 'Your turn', {
         fontFamily: FONT_FAMILY,
-        fontSize: narrow ? '15px' : '25px',
+        fontSize: narrow ? '14px' : '25px',
         color: '#fff1d2',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
+    if (narrow) {
+      // On narrow the header sits to the LEFT of the summary in the same top row.
+      this.turnLabelText.setX(centerX - panelWidth / 2 + 56);
+      this.turnLabelText.setOrigin(0, 0.5);
+      this.topSummaryText.setX(centerX + 24);
+      this.topSummaryText.setOrigin(0, 0.5);
+    }
 
     this.statusText = this.add
-      .text(centerX, panelCenterY + (narrow ? 9 : 12), '', {
+      .text(centerX, narrow ? panelCenterY - 16 : panelCenterY + 12, '', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '8px' : '12px',
         color: '#d9e2ef',
         align: 'center',
-        wordWrap: { width: Math.max(176, summaryWidth) },
+        wordWrap: { width: narrow ? panelWidth - 40 : Math.max(176, summaryWidth) },
       })
       .setOrigin(0.5);
+    if (narrow) {
+      this.statusText.setVisible(false);
+    }
+    void headerY;
 
     this.topCenterContainer.add([this.topSummaryText, this.turnIndicatorPlayer, turnIndicatorPlayerText, this.turnIndicatorAi, turnIndicatorAiText, this.turnLabelText, this.statusText]);
   }
@@ -435,7 +454,7 @@ export class GameScene extends Phaser.Scene {
   private createEnemyHandRail(x: number, y: number, width: number, height: number): EnemyHandRefs {
     const rail = this.add.rectangle(0, 0, width, height, 0x101a29, 0.9).setStrokeStyle(2, 0xd6c5b0, 0.46);
     const labelText = this.add
-      .text(-width / 2 + 10, -height / 2 + 6, 'Red hidden hand', {
+      .text(-width / 2 + 10, -height / 2 + 6, 'Enemy hand', {
         fontFamily: FONT_FAMILY,
         fontSize: this.isNarrowLayout() ? '7px' : '9px',
         color: '#f2e7d4',
@@ -485,20 +504,20 @@ export class GameScene extends Phaser.Scene {
     this.updatePileView(this.playerDeckPile, {
       kind: 'deck',
       owner: 'player',
-      label: 'Black deck',
+      label: 'Your deck',
       count: this.state.players.player.deck.length,
     });
     this.updatePileView(this.playerDiscardPile, {
       kind: 'discard',
       owner: 'player',
-      label: 'Black discard',
+      label: 'Your discard',
       count: this.state.players.player.discard.length,
       topCardId: this.state.players.player.discard.at(-1) ?? null,
     });
     this.updatePileView(this.aiDiscardPile, {
       kind: 'discard',
       owner: 'ai',
-      label: 'Red discard',
+      label: 'Enemy discard',
       count: this.state.players.ai.discard.length,
       topCardId: this.state.players.ai.discard.at(-1) ?? null,
     });
@@ -514,7 +533,8 @@ export class GameScene extends Phaser.Scene {
     const card = options.topCardId ? CARD_BY_ID[options.topCardId] : null;
     const ownerColor = options.owner === 'player' ? THEME.playerBlack : THEME.enemyRed;
 
-    pile.labelText.setText(options.label);
+    pile.labelText.setText(narrow ? '' : options.label);
+    pile.labelText.setVisible(!narrow);
     pile.countText.setText(String(options.count));
     pile.countBg.setFillStyle(options.kind === 'deck' ? 0x253546 : ownerColor, 0.96);
     pile.countBg.setStrokeStyle(2, options.kind === 'deck' ? 0xf0e3c7 : 0xf6d7c5, 0.84);
@@ -535,9 +555,10 @@ export class GameScene extends Phaser.Scene {
       pile.frame.fillRoundedRect(-width * 0.28, -height * 0.18, width * 0.56, 5, 2);
       pile.frame.fillRoundedRect(-width * 0.26, 2, width * 0.52, 5, 2);
       pile.frame.fillRoundedRect(-width * 0.24, height * 0.18, width * 0.48, 5, 2);
-      pile.titleText.setText(options.count > 0 ? 'Draw pile' : 'Deck empty');
+      pile.titleText.setText(options.count > 0 ? 'Draw' : 'Empty');
       pile.titleText.setColor('#f2f5fb');
-      pile.metaText.setText(options.count > 0 ? 'Reshuffles from discard' : 'Waiting for reshuffle');
+      pile.metaText.setText(narrow ? '' : options.count > 0 ? 'Reshuffles from discard' : 'Waiting for reshuffle');
+      pile.metaText.setVisible(!narrow);
       pile.metaText.setColor('#d9e2ef');
       return;
     }
@@ -552,7 +573,8 @@ export class GameScene extends Phaser.Scene {
       pile.frame.strokeRoundedRect(-width / 2, -height / 2, width, height, radius);
       pile.titleText.setText('Empty');
       pile.titleText.setColor('#e4d8c9');
-      pile.metaText.setText('Top card hidden until used');
+      pile.metaText.setText(narrow ? '' : 'Top card hidden until used');
+      pile.metaText.setVisible(!narrow);
       pile.metaText.setColor('#c7bcae');
       return;
     }
@@ -566,7 +588,8 @@ export class GameScene extends Phaser.Scene {
     pile.frame.fillRoundedRect(-width / 2 + 5, -height / 2 + 18, width - 10, 1, 1);
     pile.titleText.setText(card.name);
     pile.titleText.setColor('#241d19');
-    pile.metaText.setText(`${RESOURCE_META[card.domain].resourceName} ${card.cost}`);
+    pile.metaText.setText(narrow ? '' : `${RESOURCE_META[card.domain].resourceName} ${card.cost}`);
+    pile.metaText.setVisible(!narrow);
     pile.metaText.setColor('#3d352f');
   }
 
@@ -586,7 +609,7 @@ export class GameScene extends Phaser.Scene {
     const rowWidth = shownCount > 0 ? cardWidth + (shownCount - 1) * gap : 0;
     const startX = -rowWidth / 2 + cardWidth / 2;
 
-    this.enemyHand.labelText.setText('Red hidden hand');
+    this.enemyHand.labelText.setText('Enemy hand');
     this.enemyHand.countText.setText(String(hand.length));
     this.enemyHand.overflowBg.setVisible(hiddenCount > 0);
     this.enemyHand.overflowText.setVisible(hiddenCount > 0);
@@ -629,7 +652,7 @@ export class GameScene extends Phaser.Scene {
     const sideMargin = compact ? 8 : Math.max(12, Math.floor(width * 0.014));
     const panelWidth = compact ? Math.max(124, Math.min(158, (width - sideMargin * 3) / 2)) : Math.max(184, Math.min(252, (width - sideMargin * 3) / 2));
     const reservedHandHeight = compact ? Math.max(176, Math.min(224, height * 0.29)) : 0;
-    const panelTop = compact ? Math.max(108, height * 0.14) : Math.max(98, height * 0.12);
+    const panelTop = compact ? Math.max(132, height * 0.16) : Math.max(98, height * 0.12);
     const compactAvailableHeight = height - panelTop - reservedHandHeight - 18;
     const panelHeight = compact
       ? Math.max(236, Math.min(276, compactAvailableHeight))
@@ -643,7 +666,7 @@ export class GameScene extends Phaser.Scene {
       height: panelHeight,
       headerColor: THEME.playerBlack,
       borderColor: 0xbac0cf,
-      title: 'Black',
+      title: 'You',
       compact,
     });
 
@@ -655,7 +678,7 @@ export class GameScene extends Phaser.Scene {
       height: panelHeight,
       headerColor: THEME.enemyRed,
       borderColor: 0xe3b8b5,
-      title: 'Red',
+      title: 'Enemy',
       compact,
     });
   }
@@ -675,7 +698,7 @@ export class GameScene extends Phaser.Scene {
     const headerY = config.compact ? 22 : 30;
     const headerHeight = config.compact ? 34 : 48;
     const resourceTopStart = config.compact ? 46 : 74;
-    const resourceGap = config.compact ? 48 : 82;
+    const resourceGap = config.compact ? 42 : 64;
 
     const container = this.add.container(config.x, config.y).setDepth(20);
 
@@ -800,57 +823,56 @@ export class GameScene extends Phaser.Scene {
 
     const width = config.panelWidth - 24;
     const left = 12;
-    const blockHeight = config.compact ? 44 : 72;
+    const blockHeight = config.compact ? 38 : 56;
+    const centerY = config.top + blockHeight / 2;
     const bg = this.add
-      .rectangle(left + width / 2, config.top + blockHeight / 2, width, blockHeight, config.color, 0.9)
+      .rectangle(left + width / 2, centerY, width, blockHeight, config.color, 0.9)
       .setStrokeStyle(2, 0xe5d9c1);
 
-    const iconX = left + (config.compact ? 22 : 30);
-    const iconY = config.top + (config.compact ? 15 : 24);
-    const iconGraphic = createResourceIcon(this, config.resource, iconX, iconY, (config.compact ? 9 : 14) * 2, false, 0xf6f1e4);
+    const iconX = left + (config.compact ? 18 : 26);
+    const iconGraphic = createResourceIcon(
+      this,
+      config.resource,
+      iconX,
+      centerY,
+      (config.compact ? 8 : 12) * 2,
+      false,
+      0xf6f1e4,
+    );
 
-    const labelX = left + (config.compact ? 42 : 60);
-    const generatorValueX = left + width - (config.compact ? 16 : 28);
-    const labelWrapWidth = Math.max(42, generatorValueX - labelX - (config.compact ? 14 : 24));
-
-    const labelText = this.add
-      .text(labelX, config.top + (config.compact ? 5 : 8), config.label, {
+    const valueX = left + width - (config.compact ? 14 : 22);
+    const resourceValue = this.add
+      .text(valueX, centerY, '5', {
         fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '10px' : '16px',
+        fontSize: config.compact ? '20px' : '28px',
+        color: '#f7f2e6',
+        fontStyle: 'bold',
+      })
+      .setOrigin(1, 0.5);
+
+    const incomeX = valueX - (config.compact ? 22 : 36);
+    const generatorValue = this.add
+      .text(incomeX, centerY, '+2/t', {
+        fontFamily: FONT_FAMILY,
+        fontSize: config.compact ? '10px' : '13px',
+        color: '#f1e8d8',
+        fontStyle: 'bold',
+      })
+      .setOrigin(1, 0.5);
+
+    const labelX = left + (config.compact ? 32 : 46);
+    const labelWrapWidth = Math.max(48, incomeX - labelX - (config.compact ? 26 : 30));
+    const labelText = this.add
+      .text(labelX, centerY, config.resourceName, {
+        fontFamily: FONT_FAMILY,
+        fontSize: config.compact ? '11px' : '17px',
         color: '#f5f2ea',
         fontStyle: 'bold',
         wordWrap: { width: labelWrapWidth },
       })
-      .setOrigin(0, 0);
+      .setOrigin(0, 0.5);
 
-    const resourceNameText = this.add
-      .text(labelX, config.top + (config.compact ? 20 : 30), config.resourceName, {
-        fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '8px' : '14px',
-        color: '#f1e8d8',
-        wordWrap: { width: labelWrapWidth },
-      })
-      .setOrigin(0, 0);
-
-    const generatorValue = this.add
-      .text(generatorValueX, config.top + (config.compact ? 2 : 5), '2', {
-        fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '15px' : '23px',
-        color: '#f9f5eb',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-
-    const resourceValue = this.add
-      .text(generatorValueX, config.top + (config.compact ? 21 : 34), '5', {
-        fontFamily: FONT_FAMILY,
-        fontSize: config.compact ? '18px' : '28px',
-        color: '#f7f2e6',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-
-    root.add([bg, iconGraphic, labelText, resourceNameText, generatorValue, resourceValue]);
+    root.add([bg, iconGraphic, labelText, generatorValue, resourceValue]);
 
     return {
       root,
@@ -863,9 +885,13 @@ export class GameScene extends Phaser.Scene {
     this.towerContainer = this.add.container(0, 0).setDepth(10);
 
     const narrow = this.isNarrowLayout(width);
-    const centerY = narrow ? height * 0.55 : height * 0.61;
-    const spacing = narrow ? Math.max(78, Math.min(124, width * 0.25)) : Math.max(210, Math.min(310, width * 0.14));
-    const towerScale = narrow ? Math.max(0.52, Math.min(0.72, width / 500)) : Math.max(1.04, Math.min(1.22, width / 1700));
+    // On narrow layouts the side panels claim the upper rows; place castles below them
+    // so they don't z-fight with the panels.
+    const centerY = narrow ? Math.min(height * 0.66, height - 248) : height * 0.61;
+    const spacing = narrow
+      ? Math.max(72, Math.min(width * 0.36, width / 2 - 38))
+      : Math.max(210, Math.min(310, width * 0.14));
+    const towerScale = narrow ? Math.max(0.46, Math.min(0.66, width / 560)) : Math.max(1.04, Math.min(1.22, width / 1700));
 
     const stage = this.add.graphics();
     stage.fillStyle(0x08131d, 0.58);
@@ -1087,6 +1113,7 @@ export class GameScene extends Phaser.Scene {
     this.rng = new SeededRng(matchSeed ^ 0xa55aa55a);
     this.state = createInitialGameState(matchSeed);
     this.resultPersisted = false;
+    this.playerActionsTaken = 0;
 
     this.clearSelectedCard();
     this.aiCountdownMs = null;
@@ -1124,6 +1151,13 @@ export class GameScene extends Phaser.Scene {
       }
       this.updateHud();
       return false;
+    }
+
+    if (
+      (action.type === 'play_card' || action.type === 'discard_card') &&
+      action.playerId === 'player'
+    ) {
+      this.playerActionsTaken += 1;
     }
 
     this.updateHud();
@@ -1230,14 +1264,15 @@ export class GameScene extends Phaser.Scene {
       };
     }
 
-    const resourceTopStart = compact ? 52 : 74;
-    const resourceGap = compact ? 54 : 82;
-    const blockHeight = compact ? 48 : 72;
+    const resourceTopStart = compact ? 46 : 74;
+    const resourceGap = compact ? 42 : 64;
+    const blockHeight = compact ? 38 : 56;
+    const outerOffset = compact ? 22 : 36;
     return {
       x:
         playerId === 'player'
-          ? panel.container.x + panel.width - (compact ? 30 : 18)
-          : panel.container.x + (compact ? 30 : 18),
+          ? panel.container.x + panel.width + outerOffset
+          : panel.container.x - outerOffset,
       y: panel.container.y + resourceTopStart + (level - 1) * resourceGap + blockHeight / 2,
     };
   }
@@ -1420,7 +1455,7 @@ export class GameScene extends Phaser.Scene {
     const frame = this.add.graphics();
     paintCardFrame(frame, width, height, card.domain, true, false);
     const label = this.add
-      .text(0, -height / 2 - 24, 'Red reveals', {
+      .text(0, -height / 2 - 24, 'Enemy reveals', {
         fontFamily: FONT_FAMILY,
         fontSize: narrow ? '13px' : '15px',
         color: '#ffe9c8',
@@ -2143,7 +2178,11 @@ export class GameScene extends Phaser.Scene {
     this.selectDefaultCard();
     this.updateTopPileViews();
     this.rebuildEnemyHand();
-    this.topSummaryText.setText(narrow ? `Red ${ai.tower}/${ai.wall}` : `Goal ${this.state.winTower} | Red C${ai.tower} / W${ai.wall}`);
+    this.topSummaryText.setText(
+      narrow
+        ? `Enemy ${ai.tower} ♦ ${ai.wall}`
+        : `Goal ${this.state.winTower} • Enemy Castle ${ai.tower}  Wall ${ai.wall}`,
+    );
 
     const turnLabel =
       this.state.phase === 'ended'
@@ -2157,22 +2196,29 @@ export class GameScene extends Phaser.Scene {
               : 'Opponent turn';
     this.turnLabelText.setText(turnLabel);
 
+    const showHowToHint =
+      this.state.phase !== 'ended' &&
+      this.state.turn.current === 'player' &&
+      this.playerActionsTaken < HOWTO_HINT_TURNS;
+    const playerInstruction = showHowToHint
+      ? 'Click a card to play. Drag down to discard.'
+      : '';
     const currentInstruction =
       this.state.phase === 'ended'
         ? this.state.winner === 'player'
           ? 'Victory secured.'
           : 'Defeat. The tower fell.'
         : this.state.turn.current === 'player'
-          ? 'Click a full-color card or drag it to center. Drag down discards.'
+          ? playerInstruction
           : this.aiRevealCountdownMs !== null && this.aiPendingAction?.type === 'play_card'
-            ? `Red reveals ${CARD_BY_ID[this.aiPendingAction.cardId]?.name ?? 'a card'}.`
+            ? `Enemy reveals ${CARD_BY_ID[this.aiPendingAction.cardId]?.name ?? 'a card'}.`
             : this.aiSelectionCountdownMs !== null && this.aiPendingAction
               ? this.aiPendingAction.type === 'play_card'
-                ? 'Red chooses a hidden card.'
-                : 'Red cycles a hidden card.'
+                ? 'Enemy chooses a hidden card.'
+                : 'Enemy cycles a hidden card.'
               : this.aiPendingAction?.type === 'play_card'
-                ? 'Red card is resolving.'
-            : 'Red is thinking.';
+                ? 'Enemy card is resolving.'
+            : 'Enemy is thinking.';
     this.statusText.setText(
       narrow
         ? this.state.phase === 'ended'
@@ -2180,28 +2226,28 @@ export class GameScene extends Phaser.Scene {
           : this.state.turn.current === 'player'
             ? ''
             : this.aiRevealCountdownMs !== null
-              ? 'Red reveals a card.'
-              : 'Red is thinking.'
+              ? 'Enemy reveals a card.'
+              : 'Enemy is thinking.'
         : currentInstruction,
     );
 
-    this.playerPanel.headerText.setText('Black');
-    this.aiPanel.headerText.setText('Red');
+    this.playerPanel.headerText.setText('You');
+    this.aiPanel.headerText.setText('Enemy');
 
-    this.playerPanel.resourceBlocks.bricks.generatorValue.setText(`+${player.quarry}`);
+    this.playerPanel.resourceBlocks.bricks.generatorValue.setText(`+${player.quarry}/t`);
     this.playerPanel.resourceBlocks.bricks.resourceValue.setText(String(player.bricks));
-    this.playerPanel.resourceBlocks.weapons.generatorValue.setText(`+${player.barracks}`);
+    this.playerPanel.resourceBlocks.weapons.generatorValue.setText(`+${player.barracks}/t`);
     this.playerPanel.resourceBlocks.weapons.resourceValue.setText(String(player.weapons));
-    this.playerPanel.resourceBlocks.crystals.generatorValue.setText(`+${player.magic}`);
+    this.playerPanel.resourceBlocks.crystals.generatorValue.setText(`+${player.magic}/t`);
     this.playerPanel.resourceBlocks.crystals.resourceValue.setText(String(player.crystals));
     this.playerPanel.towerValue.setText(String(player.tower));
     this.playerPanel.wallValue.setText(String(player.wall));
 
-    this.aiPanel.resourceBlocks.bricks.generatorValue.setText(`+${ai.quarry}`);
+    this.aiPanel.resourceBlocks.bricks.generatorValue.setText(`+${ai.quarry}/t`);
     this.aiPanel.resourceBlocks.bricks.resourceValue.setText(String(ai.bricks));
-    this.aiPanel.resourceBlocks.weapons.generatorValue.setText(`+${ai.barracks}`);
+    this.aiPanel.resourceBlocks.weapons.generatorValue.setText(`+${ai.barracks}/t`);
     this.aiPanel.resourceBlocks.weapons.resourceValue.setText(String(ai.weapons));
-    this.aiPanel.resourceBlocks.crystals.generatorValue.setText(`+${ai.magic}`);
+    this.aiPanel.resourceBlocks.crystals.generatorValue.setText(`+${ai.magic}/t`);
     this.aiPanel.resourceBlocks.crystals.resourceValue.setText(String(ai.crystals));
     this.aiPanel.towerValue.setText(String(ai.tower));
     this.aiPanel.wallValue.setText(String(ai.wall));

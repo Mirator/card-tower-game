@@ -104,7 +104,7 @@ export interface Point {
 
 export const SWIPE_THRESHOLD = 44;
 export const DRAG_START_THRESHOLD = 12;
-export const NARROW_LAYOUT_WIDTH = 720;
+export const NARROW_LAYOUT_WIDTH = 880;
 export const RESOURCE_FLOATING_TEXT_DURATION_MULTIPLIER = 2;
 export const ENEMY_CARD_SELECTION_MS = 540;
 export const ENEMY_CARD_REVEAL_MS = 2200;
@@ -113,3 +113,4 @@ export const WALL_MAX_HEIGHT = 140;
 export const WALL_LINE_WIDTH = 8;
 export const CASTLE_MIN_HEIGHT = 132;
 export const CASTLE_MAX_HEIGHT = 276;
+export const HOWTO_HINT_TURNS = 3;
