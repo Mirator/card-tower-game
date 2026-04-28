@@ -24,7 +24,7 @@ describe('game engine', () => {
 
     const play = reduceGameState(state, { type: 'play_card', playerId: 'player', cardId: 'strike' }, rng);
     expect(play.errors).toEqual([]);
-    expect(play.state.players.player.weapons).toBe(7);
+    expect(play.state.players.player.weapons).toBe(6);
     expect(play.state.turn.actionTaken).toBe(true);
 
     const end = reduceGameState(play.state, { type: 'end_turn' }, rng);
@@ -58,11 +58,12 @@ describe('game engine', () => {
 
     const play = reduceGameState(state, { type: 'play_card', playerId: 'player', cardId: 'raid' }, rng);
 
+    // Raid deals 11; barrier blocks 3 (-> 8), fortify blocks 2 (-> 6), wall absorbs 5 (-> 1), tower takes 1.
     expect(play.errors).toEqual([]);
     expect(play.state.players.ai.statuses.barrier).toBe(0);
     expect(play.state.players.ai.statuses.nextIncomingDamageReduction).toBe(0);
-    expect(play.state.players.ai.wall).toBe(3);
-    expect(play.state.players.ai.tower).toBe(30);
+    expect(play.state.players.ai.wall).toBe(0);
+    expect(play.state.players.ai.tower).toBe(29);
   });
 
   it('is deterministic for random effects with same seed', () => {

@@ -1,6 +1,7 @@
 import { evaluateAIMove } from '../src/game/ai';
 import { CARD_BY_ID, STARTER_DECK_CARD_IDS } from '../src/game/cards';
 import {
+  canAffordCard,
   createInitialGameState,
   reduceGameState,
 } from '../src/game/engine';
@@ -17,6 +18,16 @@ interface SimResult {
   winner: PlayerId;
   turns: number;
   decidedByLethal: boolean;
+  reachedTowerCap: boolean;
+  endResources: { player: ResourceTotals; ai: ResourceTotals };
+  unaffordablePlayerTurns: number;
+  totalPlayerTurns: number;
+}
+
+interface ResourceTotals {
+  bricks: number;
+  weapons: number;
+  crystals: number;
 }
 
 function buildAIView(state: GameState, actor: PlayerId): GameState {
@@ -47,8 +58,10 @@ function simulate(seed: number, cardStats: Map<string, CardStats>): SimResult {
 
   let guard = 0;
   let lastPlay: { actor: PlayerId; cardId: string } | null = null;
+  let unaffordablePlayerTurns = 0;
+  let totalPlayerTurns = 0;
 
-  while (state.phase === 'playing' && guard < 600) {
+  while (state.phase === 'playing' && guard < 1500) {
     if (!state.turn.started) {
       const started = reduceGameState(state, { type: 'start_turn' }, rng);
       if (started.errors.length > 0) {
@@ -63,6 +76,16 @@ function simulate(seed: number, cardStats: Map<string, CardStats>): SimResult {
     const actor = state.turn.current;
     if (state.players[actor].hand.length === 0) {
       throw new Error(`Empty hand on turn ${state.turn.number} for ${actor}`);
+    }
+
+    if (actor === 'player') {
+      totalPlayerTurns += 1;
+      const anyAffordable = state.players.player.hand.some((cardId) =>
+        canAffordCard(state, 'player', cardId),
+      );
+      if (!anyAffordable) {
+        unaffordablePlayerTurns += 1;
+      }
     }
 
     const action = chooseAction(state, actor);
@@ -101,8 +124,29 @@ function simulate(seed: number, cardStats: Map<string, CardStats>): SimResult {
 
   const decidedByLethal =
     state.players.player.tower <= 0 || state.players.ai.tower <= 0;
+  const reachedTowerCap =
+    state.players.player.tower >= state.winTower || state.players.ai.tower >= state.winTower;
 
-  return { winner: state.winner, turns: state.turn.number, decidedByLethal };
+  return {
+    winner: state.winner,
+    turns: state.turn.number,
+    decidedByLethal,
+    reachedTowerCap,
+    endResources: {
+      player: {
+        bricks: state.players.player.bricks,
+        weapons: state.players.player.weapons,
+        crystals: state.players.player.crystals,
+      },
+      ai: {
+        bricks: state.players.ai.bricks,
+        weapons: state.players.ai.weapons,
+        crystals: state.players.ai.crystals,
+      },
+    },
+    unaffordablePlayerTurns,
+    totalPlayerTurns,
+  };
 }
 
 function ensureStats(map: Map<string, CardStats>, cardId: string): CardStats {
@@ -131,7 +175,13 @@ function runBalance(matchCount: number, seedOffset: number): void {
   let playerWins = 0;
   let aiWins = 0;
   let lethalDecisions = 0;
+  let towerCapDecisions = 0;
   let totalTurns = 0;
+  let totalUnaffordablePlayerTurns = 0;
+  let totalPlayerTurns = 0;
+  let totalEndBricks = 0;
+  let totalEndWeapons = 0;
+  let totalEndCrystals = 0;
   const turnBuckets = [
     { label: '<= 20', count: 0 },
     { label: '21-40', count: 0 },
@@ -146,7 +196,13 @@ function runBalance(matchCount: number, seedOffset: number): void {
     if (result.winner === 'player') playerWins += 1;
     else aiWins += 1;
     if (result.decidedByLethal) lethalDecisions += 1;
+    if (result.reachedTowerCap) towerCapDecisions += 1;
     totalTurns += result.turns;
+    totalUnaffordablePlayerTurns += result.unaffordablePlayerTurns;
+    totalPlayerTurns += result.totalPlayerTurns;
+    totalEndBricks += result.endResources.player.bricks + result.endResources.ai.bricks;
+    totalEndWeapons += result.endResources.player.weapons + result.endResources.ai.weapons;
+    totalEndCrystals += result.endResources.player.crystals + result.endResources.ai.crystals;
     if (result.turns <= 20) turnBuckets[0].count += 1;
     else if (result.turns <= 40) turnBuckets[1].count += 1;
     else if (result.turns <= 60) turnBuckets[2].count += 1;
@@ -169,7 +225,16 @@ function runBalance(matchCount: number, seedOffset: number): void {
   console.log(`first-player edge: ${((playerWinRate - 0.5) * 100).toFixed(2)} pp`);
   console.log(`avg turn count:    ${avgTurns.toFixed(2)}`);
   console.log(`decided by lethal: ${lethalDecisions} (${((lethalDecisions / matchCount) * 100).toFixed(1)}%)`);
-  console.log(`decided by 100T:   ${matchCount - lethalDecisions} (${(((matchCount - lethalDecisions) / matchCount) * 100).toFixed(1)}%)`);
+  console.log(`decided by 100T:   ${towerCapDecisions} (${((towerCapDecisions / matchCount) * 100).toFixed(1)}%)`);
+  console.log('');
+
+  const avgEndBricks = totalEndBricks / (matchCount * 2);
+  const avgEndWeapons = totalEndWeapons / (matchCount * 2);
+  const avgEndCrystals = totalEndCrystals / (matchCount * 2);
+  const unaffordableRate = totalPlayerTurns > 0 ? totalUnaffordablePlayerTurns / totalPlayerTurns : 0;
+  console.log('--- Economy ---');
+  console.log(`avg end-of-match resources per side: bricks ${avgEndBricks.toFixed(1)}  weapons ${avgEndWeapons.toFixed(1)}  crystals ${avgEndCrystals.toFixed(1)}`);
+  console.log(`bricked turns (no affordable card): ${totalUnaffordablePlayerTurns}/${totalPlayerTurns} player turns (${(unaffordableRate * 100).toFixed(2)}%)`);
   console.log('');
 
   console.log('--- Turn distribution ---');

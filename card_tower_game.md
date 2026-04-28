@@ -49,7 +49,7 @@ Victory:
 - If both players satisfy victory during the same active resolution, the active player wins
 
 ## Starting values
-- Tower: 30
+- Tower: 22
 - Wall: 10
 - Bricks/Weapons/Crystals: 5
 - Quarry/Barracks/Magic: 2
@@ -172,39 +172,39 @@ Both players use this same physical deck composition.
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Brick Patch | 3 | +6 Wall |
-| 2 | Repair | 4 | +5 Tower |
-| 1 | Reinforce | 5 | +4 Wall, +2 Tower |
-| 1 | Brick Flow | 5 | +8 Bricks |
-| 1 | Construction | 6 | +2 Tower per Quarry |
-| 1 | Stone Wall | 7 | +10 Wall |
-| 1 | Quarry Team | 8 | +1 Quarry |
-| 1 | Tower Boost | 9 | +10 Tower |
+| 2 | Brick Patch | 4 | +6 Wall |
+| 2 | Repair | 6 | +12 Tower |
+| 1 | Reinforce | 7 | +6 Wall, +3 Tower |
+| 1 | Brick Flow | 7 | +9 Bricks |
+| 1 | Construction | 9 | +3 Tower per Quarry |
+| 1 | Stone Wall | 10 | +13 Wall |
+| 1 | Quarry Team | 6 | +1 Quarry |
+| 1 | Tower Boost | 14 | +22 Tower |
 
 ### Weapon cards - 10 physical cards
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Strike | 3 | 4 dmg |
-| 2 | Slash | 4 | 5 dmg |
-| 1 | Smash | 5 | 6 dmg |
-| 1 | Raid | 6 | 7 dmg |
-| 1 | Breach | 6 | 8 Wall dmg |
-| 1 | Pressure | 6 | Enemy -4 Wall, -2 Tower |
-| 1 | Siege Crew | 8 | +1 Barracks |
-| 1 | Overrun | 11 | 14 dmg |
+| 2 | Strike | 4 | 5 dmg |
+| 2 | Slash | 6 | 7 dmg |
+| 1 | Smash | 8 | 9 dmg |
+| 1 | Raid | 10 | 11 dmg |
+| 1 | Breach | 8 | 11 Wall dmg |
+| 1 | Pressure | 9 | Enemy -5 Wall, -3 Tower |
+| 1 | Siege Crew | 6 | +1 Barracks |
+| 1 | Overrun | 14 | 17 dmg |
 
 ### Crystal cards - 10 physical cards
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Spark | 3 | 3 Tower dmg |
-| 2 | Zap | 4 | 4 dmg bypass Wall |
-| 2 | Crystal Boost | 6 | +8 Crystals |
+| 2 | Spark | 4 | 4 Tower dmg |
+| 2 | Zap | 6 | 6 dmg bypass Wall |
+| 2 | Crystal Boost | 8 | +10 Crystals |
 | 1 | Shield | 5 | Prevent next attack |
-| 1 | Arcane Study | 8 | +1 Magic |
-| 1 | Mana Surge | 9 | +2 Magic |
-| 1 | Arcane Blast | 11 | 9 dmg bypass Wall |
+| 1 | Arcane Study | 6 | +1 Magic |
+| 1 | Mana Surge | 11 | +2 Magic |
+| 1 | Arcane Blast | 14 | 11 dmg bypass Wall |
 
 ## Balancing notes
 - Brick = defense + tower scaling

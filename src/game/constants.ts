@@ -1,7 +1,7 @@
 import type { Generator, Resource, StatusState } from './types';
 
 export const STARTING_VALUES = {
-  tower: 30,
+  tower: 22,
   wall: 10,
   bricks: 5,
   weapons: 5,
