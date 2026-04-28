@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "smoke:browser": "node scripts/browser-smoke.mjs",
+    "balance": "vite-node scripts/balance.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint ."

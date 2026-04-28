@@ -206,7 +206,11 @@ async function runDevSmoke(url) {
     assert(afterTurn.player.hand.length === 6, 'Player hand should refill to 6 after action');
     assert(afterTurn.ui.renderedHandCardCount === 6, 'Rendered hand should still contain 6 cards after action');
     assert(afterTurn.ui.fullyVisibleHandCardCount === 6, 'Rendered hand should stay fully visible after action');
-    assert(afterTurn.ui.enemyHiddenHandCount === 6, 'Enemy hidden hand should refill to 6 after action');
+    // After the AI's turn the enemy hand drops to 5 (played) or stays 6 (discard-cycle); refill happens at AI's next turn start.
+    assert(
+      afterTurn.ui.enemyHiddenHandCount === 5 || afterTurn.ui.enemyHiddenHandCount === 6,
+      `Enemy hidden hand should be 5 (played) or 6 (cycled), got ${afterTurn.ui.enemyHiddenHandCount}`,
+    );
     await page.screenshot({ path: fileURLToPath(new URL('dev-after-turn.png', OUTPUT_DIR)) });
 
     await assertNoConsoleErrors(errors);
