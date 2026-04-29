@@ -82,6 +82,10 @@ export interface CardDefinition {
   text: string;
   effects: EffectSpec[];
   illustrationKey?: CardIllustrationKey;
+  /** Optional: number of additional cards from hand that must be discarded as a play cost. */
+  discardCost?: number;
+  /** Optional: when true, playing this card does not consume the turn's action — you can play another card. */
+  keepsTurn?: boolean;
 }
 
 export interface StatusState {

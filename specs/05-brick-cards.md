@@ -4,11 +4,12 @@
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Brick Patch | 4 | +6 Wall |
-| 2 | Repair | 6 | +12 Tower |
-| 1 | Reinforce | 7 | +6 Wall, +3 Tower |
-| 1 | Brick Flow | 7 | +9 Bricks |
-| 1 | Construction | 9 | +3 Tower per Quarry |
+| 1 | Brick Patch | 4 | +6 Wall |
+| 2 | Repair | 6 | +14 Tower |
 | 1 | Stone Wall | 10 | +13 Wall |
 | 1 | Quarry Team | 6 | +1 Quarry |
-| 1 | Tower Boost | 14 | +22 Tower |
+| 1 | Tower Boost | 14 | +28 Tower |
+| 1 | Forced March | 4 | +3 Wall |
+| 1 | Stockpile Burn | 5 | +8 of all |
+| 1 | Treaty | 8 | Both gain +1 Magic |
+| 1 | Library | 6 | Draw 2 |

@@ -103,8 +103,8 @@ export const ALL_CARDS: CardDefinition[] = [
     domain: 'bricks',
     cost: 6,
     tags: ['defense'],
-    text: '+12 Tower',
-    effects: [{ type: 'adjustTower', target: 'self', amount: 12 }],
+    text: '+14 Tower',
+    effects: [{ type: 'adjustTower', target: 'self', amount: 14 }],
     illustrationKey: 'tower',
   }),
   c({
@@ -122,8 +122,8 @@ export const ALL_CARDS: CardDefinition[] = [
     domain: 'bricks',
     cost: 14,
     tags: ['economy', 'defense', 'finisher'],
-    text: '+22 Tower',
-    effects: [{ type: 'adjustTower', target: 'self', amount: 22 }],
+    text: '+28 Tower',
+    effects: [{ type: 'adjustTower', target: 'self', amount: 28 }],
     illustrationKey: 'tower',
   }),
   c({
@@ -601,10 +601,143 @@ export const ALL_CARDS: CardDefinition[] = [
       { type: 'adjustTower', target: 'self', amount: -5 },
     ],
   }),
+
+  // === Symmetric event cards (Arcomage-style "weather") ===
+  c({
+    id: 'earthquake',
+    name: 'Earthquake',
+    domain: 'crystals',
+    cost: 5,
+    tags: ['sabotage', 'control'],
+    text: 'Both walls -8',
+    effects: [
+      { type: 'adjustWall', target: 'self', amount: -8 },
+      { type: 'adjustWall', target: 'opponent', amount: -8 },
+    ],
+    illustrationKey: 'cracked_shield',
+  }),
+  c({
+    id: 'famine',
+    name: 'Famine',
+    domain: 'weapons',
+    cost: 6,
+    tags: ['sabotage', 'control'],
+    text: 'Both lose 4 of each',
+    effects: [
+      { type: 'adjustAllResources', target: 'self', amount: -4 },
+      { type: 'adjustAllResources', target: 'opponent', amount: -4 },
+    ],
+    illustrationKey: 'cracked_shield',
+  }),
+  c({
+    id: 'treaty',
+    name: 'Treaty',
+    domain: 'bricks',
+    cost: 8,
+    tags: ['economy', 'control'],
+    text: 'Both gain +1 Magic',
+    effects: [
+      { type: 'adjustGenerator', target: 'self', generator: 'magic', amount: 1 },
+      { type: 'adjustGenerator', target: 'opponent', generator: 'magic', amount: 1 },
+    ],
+    illustrationKey: 'book',
+  }),
+
+  // === Discard-cost cards (Arcomage-style "commit") ===
+  c({
+    id: 'avalanche',
+    name: 'Avalanche',
+    domain: 'crystals',
+    cost: 5,
+    tags: ['attack', 'sabotage'],
+    text: '14 Wall dmg',
+    effects: [{ type: 'attack', amount: 14, wallOnly: true, source: 'spell' }],
+    illustrationKey: 'ram',
+    discardCost: 1,
+  }),
+  c({
+    id: 'frenzy',
+    name: 'Frenzy',
+    domain: 'weapons',
+    cost: 8,
+    tags: ['attack', 'finisher'],
+    text: '14 dmg',
+    effects: [{ type: 'attack', amount: 14, source: 'attack' }],
+    illustrationKey: 'crossed_swords',
+    discardCost: 1,
+  }),
+  c({
+    id: 'stockpile_burn',
+    name: 'Stockpile Burn',
+    domain: 'bricks',
+    cost: 5,
+    tags: ['economy'],
+    text: '+8 of all',
+    effects: [{ type: 'adjustAllResources', target: 'self', amount: 8 }],
+    illustrationKey: 'crate',
+    discardCost: 1,
+  }),
+
+  // === keepsTurn / "quick" cards — play another card after this ===
+  c({
+    id: 'forced_march',
+    name: 'Forced March',
+    domain: 'bricks',
+    cost: 4,
+    tags: ['defense'],
+    text: '+3 Wall',
+    effects: [{ type: 'adjustWall', target: 'self', amount: 3 }],
+    illustrationKey: 'wall',
+    keepsTurn: true,
+  }),
+  c({
+    id: 'quick_strike',
+    name: 'Quick Strike',
+    domain: 'weapons',
+    cost: 6,
+    tags: ['attack'],
+    text: '3 dmg',
+    effects: [{ type: 'attack', amount: 3, source: 'attack' }],
+    illustrationKey: 'sword',
+    keepsTurn: true,
+  }),
+  c({
+    id: 'channeling',
+    name: 'Channeling',
+    domain: 'crystals',
+    cost: 6,
+    tags: ['economy'],
+    text: '+2 of all',
+    effects: [{ type: 'adjustAllResources', target: 'self', amount: 2 }],
+    illustrationKey: 'orb',
+    keepsTurn: true,
+  }),
+
+  // === Draw cards ===
+  c({
+    id: 'library',
+    name: 'Library',
+    domain: 'bricks',
+    cost: 6,
+    tags: ['cycle'],
+    text: 'Draw 2',
+    effects: [{ type: 'drawCards', target: 'self', amount: 2 }],
+    illustrationKey: 'book',
+  }),
+  c({
+    id: 'recon',
+    name: 'Recon',
+    domain: 'weapons',
+    cost: 4,
+    tags: ['cycle'],
+    text: 'Draw 2',
+    effects: [{ type: 'drawCards', target: 'self', amount: 2 }],
+    illustrationKey: 'book',
+  }),
 ];
 
-if (ALL_CARDS.length !== 60) {
-  throw new Error(`Expected 60 cards, got ${ALL_CARDS.length}`);
+if (ALL_CARDS.length !== 71) {
+  throw new Error(`Expected 71 cards, got ${ALL_CARDS.length}`);
 }
 
 export const CARD_BY_ID: Record<string, CardDefinition> = Object.fromEntries(
@@ -614,38 +747,41 @@ export const CARD_BY_ID: Record<string, CardDefinition> = Object.fromEntries(
 export const ALL_CARD_IDS: string[] = ALL_CARDS.map((card) => card.id);
 
 export const STARTER_DECK_CARD_IDS: string[] = [
-  'brick_patch',
+  // Bricks (10): cheap defense, generators, finisher, plus 3 new mechanics + 1 draw
   'brick_patch',
   'repair',
   'repair',
-  'reinforce',
-  'brick_flow',
-  'construction',
-  'stone_wall',
   'quarry_team',
+  'stone_wall',
   'tower_boost',
+  'forced_march',
+  'stockpile_burn',
+  'treaty',
+  'library',
 
+  // Weapons (10): cheap attack, mid attack, generator, finisher, plus 3 new mechanics + 1 draw
   'strike',
   'strike',
   'slash',
-  'slash',
-  'smash',
   'raid',
-  'breach',
-  'pressure',
   'siege_crew',
   'overrun',
+  'frenzy',
+  'quick_strike',
+  'famine',
+  'recon',
 
-  'spark',
+  // Crystals (10): cheap castle dmg, defense, generator, finisher, plus 3 new mechanics + 1 draw
   'spark',
   'zap',
-  'zap',
-  'crystal_boost',
   'crystal_boost',
   'shield',
   'arcane_study',
-  'mana_surge',
   'arcane_blast',
+  'channeling',
+  'avalanche',
+  'earthquake',
+  'insight',
 ];
 
 if (STARTER_DECK_CARD_IDS.length !== 30) {

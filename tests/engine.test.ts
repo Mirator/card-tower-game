@@ -164,8 +164,8 @@ describe('game engine', () => {
     expect(control.players.ai.hand.length).toBe(4);
   });
 
-  it('contains all 60 cards and known ids', () => {
-    expect(Object.keys(CARD_BY_ID).length).toBe(60);
+  it('contains all 71 cards and known ids', () => {
+    expect(Object.keys(CARD_BY_ID).length).toBe(71);
     expect(CARD_BY_ID.cataclysm.cost).toBe(15);
   });
 
@@ -178,13 +178,8 @@ describe('game engine', () => {
     expect(STARTER_DECK_CARD_IDS.length).toBe(30);
     expect(STARTER_DECK_CARD_IDS.every((cardId) => Boolean(CARD_BY_ID[cardId]))).toBe(true);
     expect(counts).toMatchObject({
-      brick_patch: 2,
       repair: 2,
       strike: 2,
-      slash: 2,
-      spark: 2,
-      zap: 2,
-      crystal_boost: 2,
     });
 
     const domainCounts = STARTER_DECK_CARD_IDS.reduce<Record<string, number>>((acc, cardId) => {

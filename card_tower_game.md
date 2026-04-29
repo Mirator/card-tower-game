@@ -49,7 +49,7 @@ Victory:
 - If both players satisfy victory during the same active resolution, the active player wins
 
 ## Starting values
-- Tower: 22
+- Tower: 27
 - Wall: 10
 - Bricks/Weapons/Crystals: 5
 - Quarry/Barracks/Magic: 2
@@ -172,39 +172,44 @@ Both players use this same physical deck composition.
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Brick Patch | 4 | +6 Wall |
-| 2 | Repair | 6 | +12 Tower |
-| 1 | Reinforce | 7 | +6 Wall, +3 Tower |
-| 1 | Brick Flow | 7 | +9 Bricks |
-| 1 | Construction | 9 | +3 Tower per Quarry |
+| 1 | Brick Patch | 4 | +6 Wall |
+| 2 | Repair | 6 | +14 Tower |
 | 1 | Stone Wall | 10 | +13 Wall |
 | 1 | Quarry Team | 6 | +1 Quarry |
-| 1 | Tower Boost | 14 | +22 Tower |
+| 1 | Tower Boost | 14 | +28 Tower |
+| 1 | Forced March | 4 | +3 Wall, play again |
+| 1 | Stockpile Burn | 5 | +8 of all (discard 1) |
+| 1 | Treaty | 8 | Both gain +1 Magic |
+| 1 | Library | 6 | Draw 2 |
 
 ### Weapon cards - 10 physical cards
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
 | 2 | Strike | 4 | 5 dmg |
-| 2 | Slash | 6 | 7 dmg |
-| 1 | Smash | 8 | 9 dmg |
+| 1 | Slash | 6 | 7 dmg |
 | 1 | Raid | 10 | 11 dmg |
-| 1 | Breach | 8 | 11 Wall dmg |
-| 1 | Pressure | 9 | Enemy -5 Wall, -3 Tower |
 | 1 | Siege Crew | 6 | +1 Barracks |
 | 1 | Overrun | 14 | 17 dmg |
+| 1 | Frenzy | 8 | 14 dmg (discard 1) |
+| 1 | Quick Strike | 6 | 3 dmg, play again |
+| 1 | Famine | 6 | Both lose 4 of each |
+| 1 | Recon | 4 | Draw 2 |
 
 ### Crystal cards - 10 physical cards
 
 | Copies | Card | Cost | Effect |
 |---:|---|---:|---|
-| 2 | Spark | 4 | 4 Tower dmg |
-| 2 | Zap | 6 | 6 dmg bypass Wall |
-| 2 | Crystal Boost | 8 | +10 Crystals |
+| 1 | Spark | 4 | 4 Tower dmg |
+| 1 | Zap | 6 | 6 dmg bypass Wall |
+| 1 | Crystal Boost | 8 | +10 Crystals |
 | 1 | Shield | 5 | Prevent next attack |
 | 1 | Arcane Study | 6 | +1 Magic |
-| 1 | Mana Surge | 11 | +2 Magic |
 | 1 | Arcane Blast | 14 | 11 dmg bypass Wall |
+| 1 | Channeling | 6 | +2 of all, play again |
+| 1 | Avalanche | 5 | 14 Wall dmg (discard 1) |
+| 1 | Earthquake | 5 | Both walls -8 |
+| 1 | Insight | 5 | Draw 2, discard 1 |
 
 ## Balancing notes
 - Brick = defense + tower scaling

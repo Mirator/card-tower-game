@@ -44,6 +44,12 @@ describe('match simulation', () => {
       expect(acted.errors).toEqual([]);
       state = acted.state;
 
+      // keepsTurn cards leave actionTaken=false; loop again to take another action.
+      if (state.phase === 'playing' && !state.turn.actionTaken) {
+        guard += 1;
+        continue;
+      }
+
       const ended = reduceGameState(state, { type: 'end_turn' }, rng);
       expect(ended.errors).toEqual([]);
       state = ended.state;

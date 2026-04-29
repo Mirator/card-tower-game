@@ -23,7 +23,7 @@ Victory:
 - If both players satisfy victory during the same active resolution, the active player wins
 
 ## Starting values
-- Tower: 22
+- Tower: 27
 - Wall: 10
 - Bricks/Weapons/Crystals: 5
 - Quarry/Barracks/Magic: 2

@@ -229,18 +229,23 @@ export class GameScene extends Phaser.Scene {
 
     win.__game = {
       interact: () => {
-        if (this.state.phase !== 'playing' || this.state.turn.current !== 'player' || !this.state.turn.started) {
-          return;
+        // Loops to keep firing while keepsTurn cards leave the action open.
+        for (let safety = 0; safety < 12; safety += 1) {
+          if (this.state.phase !== 'playing' || this.state.turn.current !== 'player' || !this.state.turn.started) {
+            return;
+          }
+          if (this.state.turn.actionTaken) {
+            return;
+          }
+          const hand = this.state.players.player.hand;
+          const targetIndex = hand.findIndex((cardId) => canAffordCard(this.state, 'player', cardId));
+          const handIndex = targetIndex === -1 ? 0 : targetIndex;
+          const target = hand[handIndex];
+          if (!target) {
+            return;
+          }
+          this.tryPlayCard(target, handIndex);
         }
-
-        const hand = this.state.players.player.hand;
-        const targetIndex = hand.findIndex((cardId) => canAffordCard(this.state, 'player', cardId));
-        const handIndex = targetIndex === -1 ? 0 : targetIndex;
-        const target = hand[handIndex];
-        if (!target) {
-          return;
-        }
-        this.tryPlayCard(target, handIndex);
       },
       clearInput: () => {
         this.clearSelectedCard();
@@ -1698,6 +1703,17 @@ export class GameScene extends Phaser.Scene {
     this.clearEnemyCardReveal(true);
     this.updateHud();
 
+    // keepsTurn cards leave actionTaken=false; queue another AI move instead of ending the turn.
+    if (
+      this.state.phase === 'playing' &&
+      this.state.turn.current === 'ai' &&
+      !this.state.turn.actionTaken &&
+      this.state.players.ai.hand.length > 0
+    ) {
+      this.aiCountdownMs = AI_DELAY_MS;
+      return;
+    }
+
     if (this.dispatch({ type: 'end_turn' })) {
       this.progressLoop();
     }
@@ -1974,6 +1990,13 @@ export class GameScene extends Phaser.Scene {
 
     const played = this.dispatch({ type: 'play_card', playerId: 'player', cardId, handIndex: selectedIndex });
     if (!played) {
+      return;
+    }
+
+    // keepsTurn cards leave actionTaken=false so the player can play another card.
+    if (!this.state.turn.actionTaken) {
+      this.selectDefaultCard();
+      this.progressLoop();
       return;
     }
 

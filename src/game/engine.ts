@@ -155,7 +155,15 @@ function normalizeResource(player: PlayerState, resource: Resource): void {
 }
 
 function canAfford(player: PlayerState, card: CardDefinition): boolean {
-  return player[card.domain] >= card.cost;
+  if (player[card.domain] < card.cost) {
+    return false;
+  }
+  // Discard-cost cards need extra cards in hand beyond the one being played.
+  const requiredHandSize = (card.discardCost ?? 0) + 1;
+  if (player.hand.length < requiredHandSize) {
+    return false;
+  }
+  return true;
 }
 
 export function canAffordCard(state: GameState, playerId: PlayerId, cardId: string): boolean {
@@ -832,6 +840,11 @@ function playCardAction(
   spendCardCost(actor, card);
   logs.push(`${action.playerId === 'player' ? 'You' : 'AI'} play ${card.name}.`);
 
+  if (card.discardCost && card.discardCost > 0) {
+    const actorName = action.playerId === 'player' ? 'You' : 'AI';
+    discardRandomCards(actor, card.discardCost, rng, logs, actorName);
+  }
+
   const executedEffects = resolveEffectList(state, action.playerId, card.effects, rng, logs, card.name);
 
   actor.discard.push(card.id);
@@ -843,6 +856,11 @@ function playCardAction(
     };
   }
 
+  // keepsTurn cards (e.g., Quick Strike) let the actor play another card,
+  // unless their hand is now empty in which case the action ends naturally.
+  if (card.keepsTurn && actor.hand.length > 0) {
+    return;
+  }
   state.turn.actionTaken = true;
 }
 
@@ -1160,7 +1178,15 @@ export function projectedPlayState(state: GameState, action: AIMove, rngSeed: nu
     return null;
   }
 
-  const endResult = reduceGameState(playResult.state, { type: 'end_turn' }, rng);
+  // keepsTurn cards leave actionTaken=false; for the 1-ply projection treat them as
+  // having ended the action so end_turn succeeds. The keepsTurn bonus is modeled by
+  // the AI heuristic separately rather than by simulating a second action here.
+  const projection = playResult.state;
+  if (!projection.turn.actionTaken) {
+    projection.turn.actionTaken = true;
+  }
+
+  const endResult = reduceGameState(projection, { type: 'end_turn' }, rng);
   if (endResult.errors.length > 0) {
     return null;
   }

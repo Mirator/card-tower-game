@@ -110,6 +110,8 @@ export function formatCardEffectLine(card: CardDefinition): string {
         return `${effect.target === 'opponent' ? 'Enemy Castle' : 'Castle'} ${formatAmount(effect.amount)}`;
       case 'adjustResource':
         return `${effect.target === 'opponent' ? 'Enemy ' : ''}${RESOURCE_META[effect.resource].resourceName} ${formatAmount(effect.amount)}`;
+      case 'adjustAllResources':
+        return `${effect.target === 'opponent' ? 'Enemy ' : ''}All res ${formatAmount(effect.amount)}`;
       case 'adjustGenerator':
         return `${effect.target === 'opponent' ? 'Enemy ' : ''}${generatorUiName(effect.generator)} ${formatAmount(effect.amount)}`;
       case 'attack':
@@ -118,10 +120,38 @@ export function formatCardEffectLine(card: CardDefinition): string {
         return `Castle +${effect.amountPer} / Builder`;
       case 'setShield':
         return 'Block next attack';
+      case 'drawCards':
+        return `Draw ${effect.amount}`;
+      case 'discardCards':
+        return `Discard ${effect.amount}`;
       default:
         return describeEffectImpact(effect);
     }
   });
 
-  return parts.slice(0, 2).join('\n');
+  // Symmetric cards have two parallel effects (self + opponent of same type) — collapse them.
+  let body = parts.slice(0, 2).join('\n');
+  if (parts.length === 2 && card.effects.length === 2) {
+    const a = card.effects[0];
+    const b = card.effects[1];
+    const isPair =
+      'target' in a &&
+      'target' in b &&
+      a.type === b.type &&
+      a.target !== b.target;
+    if (isPair) {
+      // e.g., "Both walls -8", "Both gain +1 Magic"
+      const single = parts[0].replace(/^Enemy /, '');
+      body = `Both: ${single}`;
+    }
+  }
+
+  // Cost markers on top of the effect text.
+  const markers: string[] = [];
+  if (card.discardCost) markers.push(`+ Discard ${card.discardCost}`);
+  if (card.keepsTurn) markers.push('→ Play again');
+  if (markers.length > 0) {
+    body = `${body}\n${markers.join(' ')}`;
+  }
+  return body;
 }

@@ -83,6 +83,13 @@ export function evaluateAIMove(state: GameState): AIMove {
       if (candidate.type === 'discard_card') {
         // Keep discard as a fallback, but force preference toward meaningful plays.
         score -= state.turn.number <= 8 ? 120 : 50;
+      } else {
+        const card = CARD_BY_ID[candidate.cardId];
+        if (card?.keepsTurn) {
+          // keepsTurn grants an extra action this turn (not modeled by 1-ply projection).
+          // Bonus reflects the rough value of an additional play.
+          score += 60;
+        }
       }
       return { candidate, simState, score };
     })

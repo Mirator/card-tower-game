@@ -106,6 +106,12 @@ function simulate(seed: number, cardStats: Map<string, CardStats>): SimResult {
       break;
     }
 
+    // keepsTurn cards leave actionTaken=false; let the actor take another action this loop.
+    if (!state.turn.actionTaken) {
+      guard += 1;
+      continue;
+    }
+
     const ended = reduceGameState(state, { type: 'end_turn' }, rng);
     if (ended.errors.length > 0) {
       throw new Error(`end_turn failed: ${ended.errors.join(', ')}`);
