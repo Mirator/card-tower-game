@@ -52,7 +52,6 @@ import {
 } from './game/visuals';
 import { formatCardEffectLine } from './game/card-text';
 import {
-  animateCardPlay,
   animateCardToDiscard,
   animateDeckDraw,
   animateDiscardReshuffle,
@@ -1229,15 +1228,13 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (action.type === 'play_card') {
-      const ctx = this.animCtx();
+      // The card travels straight from origin (hand for player, reveal stage for AI)
+      // to the discard pile. Impact is conveyed by the floating text + tower shake
+      // already emitted above, not by routing the card through the affected target.
       const origin = actionCardOrigin ?? this.getActionOrigin(action);
-      const target = this.getActionTarget(action, previous, next);
-      const discardTarget = this.getDiscardAnchor(action.playerId);
-      animateCardPlay(ctx, action.cardId, origin, target, () => {
-        animateCardToDiscard(ctx, action.cardId, target, discardTarget, {
-          owner: action.playerId,
-          facedown: false,
-        });
+      animateCardToDiscard(this.animCtx(), action.cardId, origin, this.getDiscardAnchor(action.playerId), {
+        owner: action.playerId,
+        facedown: false,
       });
       return;
     }
@@ -1350,46 +1347,6 @@ export class GameScene extends Phaser.Scene {
     return { x: world.x, y: world.y };
   }
 
-  private getActionTarget(action: Extract<Action, { type: 'play_card' }>, previous: GameState, next: GameState): Point {
-    const actor = action.playerId;
-    const opponent = actor === 'player' ? 'ai' : 'player';
-    const opponentBefore = previous.players[opponent];
-    const opponentAfter = next.players[opponent];
-    const actorBefore = previous.players[actor];
-    const actorAfter = next.players[actor];
-
-    if (opponentAfter.tower !== opponentBefore.tower || opponentAfter.wall !== opponentBefore.wall) {
-      return this.getTowerAnchor(opponent);
-    }
-
-    if (actorAfter.tower !== actorBefore.tower || actorAfter.wall !== actorBefore.wall) {
-      return this.getTowerAnchor(actor);
-    }
-
-    const resources: Resource[] = ['bricks', 'weapons', 'crystals'];
-    const changedOpponentResourceIndex = resources.findIndex((resource) => opponentAfter[resource] !== opponentBefore[resource]);
-    if (changedOpponentResourceIndex >= 0) {
-      return this.getPanelAnchor(opponent, changedOpponentResourceIndex + 1);
-    }
-
-    const generatorKeys = ['quarry', 'barracks', 'magic'] as const;
-    const changedOpponentGeneratorIndex = generatorKeys.findIndex((generator) => opponentAfter[generator] !== opponentBefore[generator]);
-    if (changedOpponentGeneratorIndex >= 0) {
-      return this.getPanelAnchor(opponent, changedOpponentGeneratorIndex + 1);
-    }
-
-    const changedResourceIndex = resources.findIndex((resource) => actorAfter[resource] !== actorBefore[resource]);
-    if (changedResourceIndex >= 0) {
-      return this.getPanelAnchor(actor, changedResourceIndex + 1);
-    }
-
-    const changedGeneratorIndex = generatorKeys.findIndex((generator) => actorAfter[generator] !== actorBefore[generator]);
-    if (changedGeneratorIndex >= 0) {
-      return this.getPanelAnchor(actor, changedGeneratorIndex + 1);
-    }
-
-    return this.getTowerAnchor(actor);
-  }
 
   private getTopStageCardPosition(): Point {
     return {
