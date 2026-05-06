@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: '/card-tower-game/',
   build: {
     // Phaser is intentionally large; keep warning signal for truly oversized app chunks.
     chunkSizeWarningLimit: 1400,

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BALANCE_MATCHES=50 npm run balance)",
+      "Bash(BALANCE_MATCHES=1000 npm run balance)",
+      "Bash(npx vitest *)",
+      "Bash(sed -n '625,3578p' src/scenes/GameScene.ts)",
+      "Read(//tmp/**)",
+      "Bash(npx tsc *)",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(BALANCE_MATCHES=200 npm run balance)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(grep -n \"Goal 100\\\\|C\\\\${.*tower\\\\|W\\\\${.*wall\\\\|topSummary\\\\|turnLabelText\\\\|statusText\\\\|Click to play\\\\|Click a full-color\" src/scenes/GameScene.ts)",
+      "Bash(BALANCE_MATCHES=500 npm run balance)"
+    ]
+  }
+}
