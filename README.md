@@ -22,7 +22,7 @@ A Phaser + TypeScript implementation of the browser tower-card duel from `card_t
 npm install
 npm run dev
 ```
-
+ 
 Open: `http://127.0.0.1:5173`
 
 ## Build and Validate
